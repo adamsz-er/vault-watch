@@ -1,7 +1,18 @@
 import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
-import type { VaultWatchSettings } from '../types';
+import type { VaultWatchSettings, EventType } from '../types';
 import { generateKeySet, createPublicKeyBundle } from '../crypto/keys';
 import type VaultWatchPlugin from './plugin';
+
+const ROUTABLE_EVENT_TYPES: { id: EventType; label: string }[] = [
+  { id: 'file_changed', label: 'File edits' },
+  { id: 'file_created', label: 'File additions' },
+  { id: 'file_deleted', label: 'File deletions' },
+  { id: 'file_renamed', label: 'File renames' },
+  { id: 'mention', label: 'Mentions' },
+  { id: 'share', label: 'Shares' },
+  { id: 'reaction', label: 'Reactions' },
+  { id: 'task_assigned', label: 'Task assignments' },
+];
 
 export class VaultWatchSettingTab extends PluginSettingTab {
   constructor(app: App, private plugin: VaultWatchPlugin) {
@@ -200,6 +211,12 @@ export class VaultWatchSettingTab extends PluginSettingTab {
           })
       );
 
+    // ── Inbox Routing ──
+    this.renderInboxRoutingSection(containerEl);
+
+    // ── Inbox Tasks ──
+    this.renderInboxTasksSection(containerEl);
+
     // ── Ignore Paths ──
     containerEl.createEl('h3', { text: 'Ignore Paths' });
 
@@ -239,5 +256,207 @@ export class VaultWatchSettingTab extends PluginSettingTab {
             })
         );
     }
+  }
+
+  private renderInboxRoutingSection(containerEl: HTMLElement): void {
+    containerEl.createEl('h3', { text: 'Activity Sensitivity' });
+    containerEl.createEl('p', {
+      text: 'Tune what reaches the Activity tab. Applies to what you receive — doesn\'t change what you send.',
+      cls: 'vault-watch-setup-status',
+    });
+
+    const r = this.plugin.settings.inboxRouting;
+
+    new Setting(containerEl)
+      .setName('Minimum edit size')
+      .setDesc('Hide edits smaller than this many characters. They\'re still stored. Default: 20.')
+      .addText(text =>
+        text
+          .setValue(String(r.activityMinCharDelta))
+          .onChange(async (value) => {
+            const num = parseInt(value);
+            if (!isNaN(num) && num >= 0) {
+              r.activityMinCharDelta = num;
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Hide trivial & sync edits')
+      .setDesc('Hide whitespace-only edits and Relay CRDT sync artifacts.')
+      .addToggle(toggle =>
+        toggle.setValue(r.activityIgnoreTrivial).onChange(async (value) => {
+          r.activityIgnoreTrivial = value;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    new Setting(containerEl)
+      .setName('Ignore path patterns')
+      .setDesc('Glob patterns (one per line). Matching files are hidden from Activity. Example: Daily/**')
+      .addTextArea(text =>
+        text
+          .setValue(r.activityIgnorePaths.join('\n'))
+          .onChange(async (value) => {
+            r.activityIgnorePaths = value
+              .split('\n')
+              .map(l => l.trim())
+              .filter(l => l.length > 0);
+            await this.plugin.saveSettings();
+          })
+      );
+
+    const mutedContainer = containerEl.createDiv();
+    mutedContainer.createEl('p', {
+      text: 'Muted event types',
+      attr: { style: 'font-weight: 600; margin: 12px 0 4px 0;' },
+    });
+    mutedContainer.createEl('p', {
+      text: 'Completely suppress these event types from Activity.',
+      cls: 'vault-watch-setup-status',
+    });
+    for (const et of ROUTABLE_EVENT_TYPES) {
+      new Setting(mutedContainer)
+        .setName(et.label)
+        .addToggle(toggle =>
+          toggle.setValue(r.mutedTypes.includes(et.id)).onChange(async (value) => {
+            const set = new Set(r.mutedTypes);
+            if (value) set.add(et.id); else set.delete(et.id);
+            r.mutedTypes = Array.from(set);
+            await this.plugin.saveSettings();
+          })
+        );
+    }
+  }
+
+  private renderInboxTasksSection(containerEl: HTMLElement): void {
+    containerEl.createEl('h3', { text: 'Inbox Tasks' });
+    containerEl.createEl('p', {
+      text: 'Surface a folder-based inbox (e.g. "0 - INBOX/Adam/1 - FOR REVIEW/") as an inbox view with one-click status transitions. Folder structure is the source of truth — no frontmatter required.',
+      cls: 'vault-watch-setup-status',
+    });
+
+    const cfg = this.plugin.settings.inboxTasks;
+
+    new Setting(containerEl)
+      .setName('Enable Inbox Tasks')
+      .setDesc('Adds a "Tasks" tab to the inbox view.')
+      .addToggle(toggle =>
+        toggle
+          .setValue(cfg.enabled)
+          .onChange(async (value) => {
+            cfg.enabled = value;
+            await this.plugin.saveSettings();
+            if (value) {
+              await this.plugin.taskScanner.scan();
+            }
+            this.display();
+          })
+      );
+
+    if (!cfg.enabled) return;
+
+    // ── Roots ──
+    const rootsSetting = new Setting(containerEl)
+      .setName('Inbox root folders')
+      .setDesc('Vault-relative folder paths scanned for tasks (one per line).');
+    rootsSetting.addTextArea(text =>
+      text
+        .setPlaceholder('0 - INBOX')
+        .setValue(cfg.roots.join('\n'))
+        .onChange(async (value) => {
+          cfg.roots = value
+            .split('\n')
+            .map(s => s.trim().replace(/^\/+|\/+$/g, ''))
+            .filter(s => s.length > 0);
+          await this.plugin.saveSettings();
+          await this.plugin.taskScanner.scan();
+        })
+    );
+
+    new Setting(containerEl)
+      .setName('Auto-detect inbox folders')
+      .setDesc('Scan vault for top-level folders matching /inbox/i.')
+      .addButton(btn =>
+        btn.setButtonText('Detect').onClick(async () => {
+          const candidates = this.plugin.taskScanner.detectCandidateRoots();
+          if (candidates.length === 0) {
+            new Notice('No inbox-like folders found at the vault root.');
+            return;
+          }
+          // Merge with existing, de-dup
+          const merged = Array.from(new Set([...cfg.roots, ...candidates]));
+          cfg.roots = merged;
+          await this.plugin.saveSettings();
+          await this.plugin.taskScanner.scan();
+          new Notice(`Added: ${candidates.join(', ')}`);
+          this.display();
+        })
+      );
+
+    // ── Scope ──
+    new Setting(containerEl)
+      .setName('Default perspective')
+      .setDesc('Which tasks to show by default.')
+      .addDropdown(dd =>
+        dd
+          .addOption('mine', 'Mine (tasks in my person folder)')
+          .addOption('everyone', 'Everyone (all tasks)')
+          .setValue(cfg.perspective)
+          .onChange(async (value) => {
+            cfg.perspective = value as 'mine' | 'everyone';
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // ── Advanced ──
+    containerEl.createEl('h4', { text: 'Advanced' });
+
+    new Setting(containerEl)
+      .setName('Status lane pattern (regex)')
+      .setDesc('Folders matching this regex are treated as status lanes. Default: ^(\\d+)\\s*-\\s*(.+)$')
+      .addText(text =>
+        text
+          .setValue(cfg.statusPattern)
+          .onChange(async (value) => {
+            cfg.statusPattern = value.trim() || '^(\\d+)\\s*-\\s*(.+)$';
+            await this.plugin.saveSettings();
+            await this.plugin.taskScanner.scan();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Done lane name')
+      .setDesc('Which lane is terminal. Blank = highest-ranked lane. Match by folder name or label.')
+      .addText(text =>
+        text
+          .setPlaceholder('DONE')
+          .setValue(cfg.doneLane || '')
+          .onChange(async (value) => {
+            cfg.doneLane = value.trim() || null;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Person folder overrides')
+      .setDesc('One "memberId = folderName" per line, for when the person folder name differs from member displayName.')
+      .addTextArea(text => {
+        const entries = Object.entries(cfg.personFolderMap);
+        text
+          .setPlaceholder('adam = Adam\nangelo = Angelo')
+          .setValue(entries.map(([k, v]) => `${k} = ${v}`).join('\n'))
+          .onChange(async (value) => {
+            const map: Record<string, string> = {};
+            for (const line of value.split('\n')) {
+              const m = line.match(/^\s*([^=\s]+)\s*=\s*(.+?)\s*$/);
+              if (m) map[m[1]] = m[2];
+            }
+            cfg.personFolderMap = map;
+            await this.plugin.saveSettings();
+            await this.plugin.taskScanner.scan();
+          });
+      });
   }
 }

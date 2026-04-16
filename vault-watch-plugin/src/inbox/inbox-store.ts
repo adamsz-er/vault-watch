@@ -3,11 +3,29 @@ import type {
   InboxItem,
   InboxItemStatus,
   InboxFilter,
+  ActivitySubFilter,
   NotificationEvent,
   VaultWatchSettings,
 } from '../types';
 import { INBOX_DIR } from '../types';
 import type { NotificationSound } from '../notifications/sound';
+
+function matchesGlob(path: string, pattern: string): boolean {
+  const p = pattern.trim();
+  if (!p) return false;
+  if (p.endsWith('/')) return path.startsWith(p) || path.includes('/' + p);
+  const rx = '^' + p
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*/g, '::DS::')
+    .replace(/\*/g, '[^/]*')
+    .replace(/::DS::/g, '.*')
+    .replace(/\?/g, '.') + '$';
+  try {
+    return new RegExp(rx).test(path);
+  } catch {
+    return path.includes(p);
+  }
+}
 
 export class InboxStore {
   private items: InboxItem[] = [];
@@ -23,35 +41,71 @@ export class InboxStore {
     this.sound = sound;
   }
 
-  getItems(filter: InboxFilter = 'all'): InboxItem[] {
-    const now = Date.now();
-    let filtered = this.items;
-
-    switch (filter) {
-      case 'mentions':
-        filtered = this.items.filter(
-          i => i.event.type === 'mention' || i.event.type === 'reaction' ||
-               i.event.mentionedMembers.includes(this.settings.memberId)
-        );
-        break;
-      case 'changes':
-        filtered = this.items.filter(
-          i => i.event.type === 'file_changed' || i.event.type === 'file_created'
-        );
-        break;
+  private matchesActivitySub(event: NotificationEvent, sub: ActivitySubFilter): boolean {
+    if (sub === 'all') return true;
+    if (sub === 'to-me') {
+      return event.type === 'share' || event.type === 'mention' ||
+             event.type === 'reaction' || event.type === 'task_assigned' ||
+             event.mentionedMembers.includes(this.settings.memberId);
     }
+    if (sub === 'additions') return event.type === 'file_created';
+    if (sub === 'edits') return event.type === 'file_changed';
+    if (sub === 'deletions') return event.type === 'file_deleted' || event.type === 'file_renamed';
+    return true;
+  }
 
-    return filtered
-      .filter(i => i.status !== 'archived')
-      .filter(i => !i.snoozedUntil || i.snoozedUntil <= now) // hide snoozed
-      .sort((a, b) => b.receivedAt - a.receivedAt);
+  private isHiddenByRouting(event: NotificationEvent): boolean {
+    const r = this.settings.inboxRouting;
+    if (r.mutedTypes.includes(event.type)) return true;
+    if (r.activityIgnoreTrivial) {
+      const ct = event.change?.changeType;
+      if (ct === 'trivial' || ct === 'sync_artifact') return true;
+    }
+    const delta = Math.abs(event.change?.charDelta ?? 0);
+    const isEdit = event.type === 'file_changed';
+    if (isEdit && delta > 0 && delta < r.activityMinCharDelta) return true;
+    if (r.activityIgnorePaths.length > 0) {
+      const p = event.filePath;
+      for (const pattern of r.activityIgnorePaths) {
+        if (matchesGlob(p, pattern)) return true;
+      }
+    }
+    return false;
+  }
+
+  getItems(_filter: InboxFilter = 'activity', activitySub: ActivitySubFilter = 'all'): InboxItem[] {
+    const now = Date.now();
+    const visible = this.items.filter(i => {
+      if (i.status === 'archived') return false;
+      if (i.snoozedUntil && i.snoozedUntil > now) return false;
+      if (this.isHiddenByRouting(i.event)) return false;
+      if (!this.matchesActivitySub(i.event, activitySub)) return false;
+      return true;
+    });
+    return visible.sort((a, b) => b.receivedAt - a.receivedAt);
+  }
+
+  getActivityUnreadCount(): number {
+    const now = Date.now();
+    let count = 0;
+    for (const i of this.items) {
+      if (i.status !== 'unread') continue;
+      if (i.snoozedUntil && i.snoozedUntil > now) continue;
+      if (this.isHiddenByRouting(i.event)) continue;
+      count++;
+    }
+    return count;
   }
 
   getUnreadCount(): number {
-    const now = Date.now();
-    return this.items.filter(
-      i => i.status === 'unread' && (!i.snoozedUntil || i.snoozedUntil <= now)
-    ).length;
+    return this.getActivityUnreadCount();
+  }
+
+  hasRecentActivityForPath(path: string, withinMs: number): boolean {
+    const cutoff = Date.now() - withinMs;
+    return this.items.some(i =>
+      i.event.filePath === path && i.receivedAt >= cutoff && i.status !== 'archived'
+    );
   }
 
   getItem(id: string): InboxItem | undefined {

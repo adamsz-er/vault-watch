@@ -13,6 +13,8 @@ import { MentionSuggest } from '../members/mention-suggest';
 import { InboxStore } from '../inbox/inbox-store';
 import { InboxView } from '../inbox/inbox-view';
 import { InboxActions } from '../inbox/actions';
+import { TaskScanner } from '../inbox/task-scanner';
+import { TaskActions } from '../inbox/task-actions';
 import { VaultRelay } from '../relay/vault-relay';
 import { SlackWebhook } from '../relay/slack-webhook';
 import { generateKeySet, createPublicKeyBundle } from '../crypto/keys';
@@ -30,6 +32,8 @@ export default class VaultWatchPlugin extends Plugin {
   private slackWebhook!: SlackWebhook;
   private dispatcher!: Dispatcher;
   private sound!: NotificationSound;
+  taskScanner!: TaskScanner;
+  taskActions!: TaskActions;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
   private ribbonIconEl: HTMLElement | null = null;
   private statusBarEl: HTMLElement | null = null;
@@ -84,6 +88,19 @@ export default class VaultWatchPlugin extends Plugin {
       this.coalescer
     );
 
+    // Inbox Tasks scanner & actions (folder-backed task inbox)
+    this.taskScanner = new TaskScanner(
+      this.app,
+      this.settings,
+      () => this.memberRegistry.getMembers()
+    );
+    this.taskActions = new TaskActions(
+      this.app,
+      this.settings,
+      this.taskScanner,
+      () => this.memberRegistry.getMembers()
+    );
+
     // Register inbox view
     this.registerView(INBOX_VIEW_TYPE, (leaf) => {
       const actions = new InboxActions(this.app);
@@ -93,6 +110,12 @@ export default class VaultWatchPlugin extends Plugin {
         () => this.memberRegistry.getMembers(),
         this.settings.memberId,
         this.manifest.version
+      );
+      view.setTasksSource(
+        this.taskScanner,
+        this.taskActions,
+        () => this.settings.inboxTasks,
+        () => this.saveSettings()
       );
       return view;
     });
@@ -173,6 +196,15 @@ export default class VaultWatchPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: 'rescan-inbox-tasks',
+      name: 'Rescan Inbox Tasks',
+      callback: async () => {
+        await this.taskScanner.scan();
+        new Notice(`Vault Watch: scanned ${this.taskScanner.getTasks().length} task(s)`);
+      },
+    });
+
+    this.addCommand({
       id: 'toggle-dnd',
       name: 'Toggle Do Not Disturb',
       callback: () => {
@@ -208,11 +240,29 @@ export default class VaultWatchPlugin extends Plugin {
       })
     );
 
+    // Inbox Tasks: vault events trigger debounced rescan
+    this.registerEvent(this.app.vault.on('create', (f) => {
+      this.taskScanner?.onVaultEvent(f.path);
+    }));
+    this.registerEvent(this.app.vault.on('delete', (f) => {
+      this.taskScanner?.onVaultEvent(f.path);
+    }));
+    this.registerEvent(this.app.vault.on('rename', (f, oldPath) => {
+      this.taskScanner?.onVaultEvent(f.path, oldPath);
+    }));
+    // metadataCache fires after Obsidian reindexes frontmatter/tags — covers modify
+    this.registerEvent(this.app.metadataCache.on('changed', (f) => {
+      this.taskScanner?.onVaultEvent(f.path);
+    }));
+
     // Start when vault is indexed and layout is ready
     this.app.workspace.onLayoutReady(async () => {
       await this.memberRegistry.initialize();
       if (this.settings.setupComplete) {
         await this.startWatching();
+      }
+      if (this.settings.inboxTasks.enabled) {
+        await this.taskScanner.scan();
       }
     });
   }

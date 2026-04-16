@@ -108,7 +108,89 @@ export interface InboxItem {
   reactions?: { emoji: string; from: string; ts: number }[];
 }
 
-export type InboxFilter = 'all' | 'mentions' | 'changes';
+export type InboxTab = 'inbox' | 'activity';
+export type ActivitySubFilter = 'all' | 'to-me' | 'additions' | 'edits' | 'deletions';
+export type InboxFilter = InboxTab;
+
+export interface InboxRoutingSettings {
+  mutedTypes: EventType[];
+  activityMinCharDelta: number;
+  activityIgnoreTrivial: boolean;
+  activityIgnorePaths: string[];
+}
+
+export const DEFAULT_INBOX_ROUTING: InboxRoutingSettings = {
+  mutedTypes: [],
+  activityMinCharDelta: 20,
+  activityIgnoreTrivial: true,
+  activityIgnorePaths: [],
+};
+
+// ─── Inbox Tasks (folder-backed) ───
+
+export interface InboxTaskLane {
+  /** Folder name as stored on disk, e.g. "1 - FOR REVIEW". */
+  name: string;
+  /** Parsed numeric rank from the `N - NAME` pattern. Orders lanes. */
+  rank: number;
+  /** Display label (the part after `N - `), title-cased. */
+  label: string;
+}
+
+export interface InboxTask {
+  /** Vault path — source of truth. */
+  path: string;
+  /** Title from frontmatter `title` or the filename basename. */
+  title: string;
+  /** Root this task lives under (one of `inboxTasks.roots`). */
+  root: string;
+  /** Member id (if the first path segment after root matches a member folder), else null. */
+  assignee: string | null;
+  /** Raw person-folder name as found on disk (preserves casing). */
+  personFolder: string | null;
+  /** Lane parsed from the numbered folder (null if not in a lane). */
+  lane: InboxTaskLane | null;
+  /** Frontmatter-derived priority, if any. */
+  priority?: Priority;
+  /** Frontmatter tags (or inline tags from metadata cache). */
+  tags: string[];
+  /** File mtime (ms). */
+  mtime: number;
+  /** `.md`, `.canvas`, etc. */
+  ext: string;
+}
+
+export interface InboxTasksSettings {
+  enabled: boolean;
+  /** Inbox root folders (vault-relative), e.g. ["0 - INBOX"]. Multi-root supported. */
+  roots: string[];
+  /** Optional: memberId → exact folder name override (when folder doesn't match displayName). */
+  personFolderMap: Record<string, string>;
+  /** Regex source string for parsing lane folders. Default: `^(\\d+)\\s*-\\s*(.+)$`. */
+  statusPattern: string;
+  /** Which lane (by label or name) is terminal/done. Default: highest rank. */
+  doneLane: string | null;
+  /** `mine` = only my person folder; `everyone` = all. */
+  perspective: 'mine' | 'everyone';
+  /** Hide Done lane by default; UI can toggle. */
+  hideDone: boolean;
+  /** Default view mode. */
+  viewMode: 'lanes' | 'list';
+  /** Plugin-local dismissed paths (hidden until moved/edited). */
+  dismissedPaths: string[];
+}
+
+export const DEFAULT_INBOX_TASKS_SETTINGS: InboxTasksSettings = {
+  enabled: false,
+  roots: [],
+  personFolderMap: {},
+  statusPattern: '^(\\d+)\\s*-\\s*(.+)$',
+  doneLane: null,
+  perspective: 'mine',
+  hideDone: true,
+  viewMode: 'lanes',
+  dismissedPaths: [],
+};
 
 // ─── Watcher ───
 
@@ -147,6 +229,8 @@ export interface VaultWatchSettings {
   soundEnabled: boolean;
   soundVolume: number;              // 0-1
   doNotDisturb: boolean;
+  inboxTasks: InboxTasksSettings;
+  inboxRouting: InboxRoutingSettings;
 }
 
 export const DEFAULT_SETTINGS: VaultWatchSettings = {
@@ -170,6 +254,8 @@ export const DEFAULT_SETTINGS: VaultWatchSettings = {
   soundEnabled: true,
   soundVolume: 0.5,
   doNotDisturb: false,
+  inboxTasks: DEFAULT_INBOX_TASKS_SETTINGS,
+  inboxRouting: DEFAULT_INBOX_ROUTING,
 };
 
 export type ReactionEmoji = '👍' | '✅' | '👀' | '❗';

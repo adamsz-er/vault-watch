@@ -72,12 +72,18 @@ The Chrome extension reads encrypted payloads from Slack messages and shows noti
 - **Members tab** — see all registered members in the vault with initials, display name, and join date
 - **Status bar** — clickable unread count always visible at bottom of Obsidian, turns red when unread
 - **Keyboard shortcuts** — `Ctrl+Shift+N` open inbox, `Ctrl+Shift+J` next unread
-- **Color-coded borders** — purple for mentions, green for creates, red for deletes, amber for shares, cyan for reactions, blue for edits
-- **Notification grouping** — consecutive edits to the same file by the same person stack into one expandable card
-- **Empty state** — muted bell icon with "All caught up" when inbox is clear
-- **Auto-refresh timestamps** — "2m ago" updates automatically every 30 seconds
-- **Smooth transitions** — hover and action transitions on cards and buttons
-- **Inbox sidebar** — filterable inbox (All / Mentions / Changes / Members) with unread badges
+- **Click-to-open cards** — entire card surface is clickable (opens file + marks read); no Open button noise
+- **Hover-revealed actions** — Reply, React (😊 popover), and overflow menu (⋯) appear only on hover, keeping cards calm at rest
+- **Person filter chips** — when more than one person has activity in view, avatar chips appear above the list to filter by sender
+- **Cross-sender grouping** — multiple changes to the same file within 1 hour stack into one card, even when different people made them ("Adam & Angelo · 5 changes to file.md")
+- **Color-coded unread dot** — small left dot indicates type (purple=mention, green=create, red=delete, amber=share, cyan=reaction, accent=edit) instead of heavy borders
+- **Two-tab nav: Inbox + Activity** — **Inbox** is your folder-backed task queue (what needs your attention); **Activity** is the full event feed (shares, mentions, reactions, file events) with sub-filters **All / To me / Additions / Edits / Deletes**, per-person chips, and search. Each tab has its own unread count badge. Members accessed via corner icon.
+- **Activity Sensitivity** — receive-side controls to tame noise: minimum edit size, hide trivial/sync edits, glob-pattern path ignores, per-event-type mutes
+- **Compact footer** — version stamp + "Mark all read" only when there's something to mark; nothing otherwise
+- **Empty state** — muted bell icon with "All caught up" / "Nothing matches" when filtered
+- **Auto-refresh timestamps** — "2m" updates automatically every 30 seconds (compact form)
+- **Inbox sidebar** — two-tab inbox (Inbox / Activity) with per-tab unread badges, sub-filters, and per-person filter chips
+- **Inbox Tasks** — folder-backed task view that adapts to your existing inbox structure (e.g. `0 - INBOX/Person/1 - FOR REVIEW/`). Folders are the state machine: one click advances a task to the next lane via `app.vault.rename` (CRDT-safe). Auto-detects candidate roots, supports multiple inbox roots, hides Done lane by default, treats `.canvas` files as tasks, enriches cards with "recently edited" activity dots from the notification inbox. Configure root(s), person-folder overrides, and lane regex in settings.
 - **Slack integration** — Block Kit messages with encrypted payload + "Open in Obsidian" deep link
 - **Chrome extension** — extracts encrypted payloads from Slack, desktop notifications, popup inbox
 
