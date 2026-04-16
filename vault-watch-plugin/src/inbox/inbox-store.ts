@@ -10,23 +10,7 @@ import type {
 import { INBOX_DIR } from '../types';
 import type { NotificationSound } from '../notifications/sound';
 import { getEventVerb } from '../utils/event-verbs';
-
-function matchesGlob(path: string, pattern: string): boolean {
-  const p = pattern.trim();
-  if (!p) return false;
-  if (p.endsWith('/')) return path.startsWith(p) || path.includes('/' + p);
-  const rx = '^' + p
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*/g, '::DS::')
-    .replace(/\*/g, '[^/]*')
-    .replace(/::DS::/g, '.*')
-    .replace(/\?/g, '.') + '$';
-  try {
-    return new RegExp(rx).test(path);
-  } catch {
-    return path.includes(p);
-  }
-}
+import { matchesGlob } from '../utils/glob-matcher';
 
 export class InboxStore {
   private items: InboxItem[] = [];
