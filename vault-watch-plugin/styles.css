@@ -1151,3 +1151,112 @@
     max-height: none;
   }
 }
+
+/* ─── Recipient Picker Modal ─── */
+
+.vw-recipient-modal .vw-recipient-subtitle {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
+.vw-recipient-modal .vw-recipient-empty {
+  color: var(--text-muted);
+  margin: 12px 0;
+}
+
+.vw-recipient-everyone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.vw-recipient-everyone input[type='checkbox'] {
+  margin: 0;
+}
+
+.vw-recipient-everyone label {
+  flex: 1;
+  cursor: pointer;
+}
+
+.vw-recipient-count {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.vw-recipient-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  padding: 2px;
+}
+
+.vw-recipient-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: background 120ms;
+}
+
+.vw-recipient-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.vw-recipient-row input[type='checkbox'] {
+  margin: 0;
+}
+
+.vw-recipient-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  flex: 1;
+}
+
+.vw-recipient-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.vw-recipient-name {
+  font-weight: 600;
+}
+
+.vw-recipient-id {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-monospace);
+}
+
+.vw-recipient-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.vw-recipient-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

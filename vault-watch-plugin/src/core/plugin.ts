@@ -15,6 +15,9 @@ import { InboxView } from '../inbox/inbox-view';
 import { InboxActions } from '../inbox/actions';
 import { TaskScanner } from '../inbox/task-scanner';
 import { TaskActions } from '../inbox/task-actions';
+import { RecipientPickerModal } from '../notifications/recipient-picker';
+import type { RecipientPickerResult } from '../notifications/recipient-picker';
+import type { Priority } from '../types';
 import { VaultRelay } from '../relay/vault-relay';
 import { SlackWebhook } from '../relay/slack-webhook';
 import { generateKeySet, createPublicKeyBundle } from '../crypto/keys';
@@ -227,15 +230,15 @@ export default class VaultWatchPlugin extends Plugin {
           menu.addItem((item) => {
             item
               .setTitle('Send to Vault Watch')
-              .setIcon('send')
-              .onClick(() => this.pushFile(file));
+              .setIcon('bell-ring')
+              .onClick(() => this.promptSendFile(file));
           });
         } else if (file instanceof TFolder) {
           menu.addItem((item) => {
             item
               .setTitle('Send folder to Vault Watch')
-              .setIcon('send')
-              .onClick(() => this.pushFolder(file));
+              .setIcon('bell-ring')
+              .onClick(() => this.promptSendFolder(file));
           });
         }
       })
@@ -430,7 +433,68 @@ export default class VaultWatchPlugin extends Plugin {
     new Notice(`Reacted ${emoji}`);
   }
 
-  private async pushFile(file: TFile): Promise<void> {
+  private async promptSendFile(file: TFile): Promise<void> {
+    if (!this.settings.setupComplete) {
+      new Notice('Vault Watch: Run setup first in settings');
+      return;
+    }
+    const others = this.memberRegistry.getMembers().filter(m => m.id !== this.settings.memberId);
+    if (others.length === 0) {
+      new Notice('Vault Watch: No other members registered yet');
+      return;
+    }
+
+    new RecipientPickerModal(
+      this.app,
+      others,
+      `Send "${file.basename}"`,
+      'Choose who should get this notification.',
+      async (result) => {
+        if (!result) return;
+        await this.pushFile(file, result.recipients, result.priority, result.note);
+      }
+    ).open();
+  }
+
+  private async promptSendFolder(folder: TFolder): Promise<void> {
+    if (!this.settings.setupComplete) {
+      new Notice('Vault Watch: Run setup first in settings');
+      return;
+    }
+    const mdFiles = this.app.vault.getMarkdownFiles().filter(
+      f => f.path.startsWith(folder.path + '/')
+    );
+    if (mdFiles.length === 0) {
+      new Notice('No markdown files in this folder');
+      return;
+    }
+    const others = this.memberRegistry.getMembers().filter(m => m.id !== this.settings.memberId);
+    if (others.length === 0) {
+      new Notice('Vault Watch: No other members registered yet');
+      return;
+    }
+
+    new RecipientPickerModal(
+      this.app,
+      others,
+      `Send folder "${folder.name}"`,
+      `${mdFiles.length} markdown file${mdFiles.length !== 1 ? 's' : ''} will be sent.`,
+      async (result) => {
+        if (!result) return;
+        for (const file of mdFiles) {
+          await this.pushFile(file, result.recipients, result.priority, result.note);
+        }
+        new Notice(`Pushed ${mdFiles.length} files from "${folder.name}"`);
+      }
+    ).open();
+  }
+
+  private async pushFile(
+    file: TFile,
+    recipientsOverride?: string[],
+    priority: Priority = 'high',
+    note: string = ''
+  ): Promise<void> {
     if (!this.settings.setupComplete) {
       new Notice('Vault Watch: Run setup first in settings');
       return;
@@ -439,14 +503,17 @@ export default class VaultWatchPlugin extends Plugin {
     try {
       const content = await this.app.vault.cachedRead(file);
       const members = this.memberRegistry.getMembers();
-      const recipients = members.filter(m => m.id !== this.settings.memberId).map(m => m.id);
+      const recipients = (recipientsOverride && recipientsOverride.length > 0)
+        ? recipientsOverride.filter(id => id !== this.settings.memberId)
+        : members.filter(m => m.id !== this.settings.memberId).map(m => m.id);
 
       if (recipients.length === 0) {
-        new Notice('Vault Watch: No other members registered yet');
+        new Notice('Vault Watch: No recipients selected');
         return;
       }
 
       const fileTitle = file.basename;
+      const summary = note ? `${note} — shared "${fileTitle}"` : `Shared "${fileTitle}"`;
       const event: NotificationEvent = {
         id: ulid(),
         v: 1,
@@ -458,15 +525,15 @@ export default class VaultWatchPlugin extends Plugin {
         fileTitle,
         change: {
           changeType: 'content_added',
-          summary: `Shared "${fileTitle}"`,
+          summary,
           affectedHeadings: [],
           charDelta: content.length,
-          addedExcerpt: content.slice(0, 200),
+          addedExcerpt: note || content.slice(0, 200),
           coalescedCount: 1,
         },
         recipients,
         mentionedMembers: [],
-        priority: 'high',
+        priority,
       };
 
       await this.dispatcher.dispatchToVault(event);
@@ -474,27 +541,15 @@ export default class VaultWatchPlugin extends Plugin {
         await this.slackWebhook.sendSingle(event);
       }
 
-      new Notice(`Pushed "${fileTitle}" to Vault Watch`);
+      const names = recipients.length === members.length - 1
+        ? 'everyone'
+        : recipients
+            .map(id => members.find(m => m.id === id)?.displayName || id)
+            .join(', ');
+      new Notice(`Sent "${fileTitle}" to ${names}`);
     } catch (err) {
       notifyError('Vault Watch: Push failed', err);
     }
-  }
-
-  private async pushFolder(folder: TFolder): Promise<void> {
-    const mdFiles = this.app.vault.getMarkdownFiles().filter(
-      f => f.path.startsWith(folder.path + '/')
-    );
-
-    if (mdFiles.length === 0) {
-      new Notice('No markdown files in this folder');
-      return;
-    }
-
-    for (const file of mdFiles) {
-      await this.pushFile(file);
-    }
-
-    new Notice(`Pushed ${mdFiles.length} files from "${folder.name}"`);
   }
 
   private async activateView(): Promise<void> {
