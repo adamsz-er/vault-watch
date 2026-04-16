@@ -43,10 +43,18 @@ Download the latest `main.js`, `manifest.json`, and `styles.css` from [releases]
 ## Setup (first time)
 
 1. Open Settings → Vault Watch
-2. Enter your **Member ID** (e.g. `adam`) and **Display Name**
+2. Enter your **Member ID** (e.g. `alice`) and **Display Name**
 3. Set **Vault Name** (auto-detected if left blank)
 4. Click **Setup** — this generates encryption keys and registers you
 5. The other team member does the same on their machine
+
+## Joining an existing team
+
+1. Get an Obsidian Relay invite to the shared vault from the existing member, accept it, wait for the initial sync.
+2. Install the plugin (BRAT instructions above).
+3. Settings → Vault Watch → pick a unique **Member ID** (check `Z_Meta/vault-watch/members/` for taken names) → click **Setup**.
+
+Existing members get a "new member" toast within ~5s.
 
 ## Slack Integration (optional)
 
