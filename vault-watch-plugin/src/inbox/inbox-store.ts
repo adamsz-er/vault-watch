@@ -139,55 +139,53 @@ export class InboxStore {
     this.notifyChange();
   }
 
-  async markRead(id: string): Promise<void> {
+  /**
+   * Apply `mutator` to the item with `id`, then persist + notify.
+   * If `mutator` returns `false`, the change is skipped (no persist, no notify).
+   * If no item matches `id`, this is a silent no-op.
+   */
+  private async mutate(id: string, mutator: (item: InboxItem) => boolean | void): Promise<void> {
     const item = this.items.find(i => i.id === id);
-    if (item && item.status === 'unread') {
+    if (!item) return;
+    if (mutator(item) === false) return;
+    await this.persistItem(item);
+    this.notifyChange();
+  }
+
+  async markRead(id: string): Promise<void> {
+    return this.mutate(id, item => {
+      if (item.status !== 'unread') return false;
       item.status = 'read';
       item.readAt = Date.now();
-      await this.persistItem(item);
-      this.notifyChange();
-    }
+    });
   }
 
   async markAllRead(): Promise<void> {
-    let changed = false;
-    for (const item of this.items) {
-      if (item.status === 'unread') {
-        item.status = 'read';
-        item.readAt = Date.now();
-        await this.persistItem(item);
-        changed = true;
-      }
+    const unread = this.items.filter(i => i.status === 'unread');
+    if (unread.length === 0) return;
+    for (const item of unread) {
+      item.status = 'read';
+      item.readAt = Date.now();
+      await this.persistItem(item);
     }
-    if (changed) this.notifyChange();
+    this.notifyChange();
   }
 
   async archive(id: string): Promise<void> {
-    const item = this.items.find(i => i.id === id);
-    if (item) {
-      item.status = 'archived';
-      await this.persistItem(item);
-      this.notifyChange();
-    }
+    return this.mutate(id, item => { item.status = 'archived'; });
   }
 
   async star(id: string): Promise<void> {
-    const item = this.items.find(i => i.id === id);
-    if (item) {
+    return this.mutate(id, item => {
       item.status = item.status === 'starred' ? 'read' : 'starred';
-      await this.persistItem(item);
-      this.notifyChange();
-    }
+    });
   }
 
   async snooze(id: string, durationMs: number): Promise<void> {
-    const item = this.items.find(i => i.id === id);
-    if (item) {
+    return this.mutate(id, item => {
       item.snoozedUntil = Date.now() + durationMs;
       item.status = 'read';
-      await this.persistItem(item);
-      this.notifyChange();
-    }
+    });
   }
 
   onChange(callback: () => void): void {
