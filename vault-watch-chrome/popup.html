@@ -75,6 +75,14 @@
 
     .setup button:hover { opacity: 0.9; }
 
+    .setup-error {
+      margin-top: 8px;
+      min-height: 18px;
+      color: #f38ba8;
+      font-size: 11px;
+      text-align: left;
+    }
+
     /* Inbox list */
     .inbox {
       overflow-y: auto;
@@ -169,6 +177,7 @@
     <p>Paste your private key JSON from the Obsidian plugin settings:</p>
     <textarea id="keyInput" placeholder='{"memberId":"...","privateKeyX25519":"...","privateKeyEd25519":"..."}'></textarea>
     <button id="saveKeys">Save Keys</button>
+    <div id="setupError" class="setup-error" role="alert" aria-live="polite"></div>
   </div>
 
   <div id="inbox" class="inbox"></div>

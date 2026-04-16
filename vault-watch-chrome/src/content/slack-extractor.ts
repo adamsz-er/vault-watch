@@ -3,6 +3,8 @@
  * Watches for vault-watch payloads in Slack messages and forwards to service worker.
  */
 
+import { sendMessage } from '../messaging/types';
+
 const PAYLOAD_PREFIX = 'vault-watch:v1:';
 const processedPayloads = new Set<string>();
 
@@ -23,11 +25,7 @@ function scanForPayloads(root: Node): void {
 
     processedPayloads.add(payload);
 
-    // Send to service worker for decryption
-    chrome.runtime.sendMessage({
-      type: 'VAULT_WATCH_PAYLOAD',
-      payload,
-    });
+    sendMessage({ type: 'VAULT_WATCH_PAYLOAD', payload });
   }
 }
 

@@ -36,10 +36,16 @@ function showSetup(): void {
   setupEl.style.display = 'block';
   inboxEl.style.display = 'none';
 
+  const errorEl = document.getElementById('setupError');
+  const showSetupError = (msg: string): void => {
+    if (errorEl) errorEl.textContent = msg;
+  };
+
   document.getElementById('saveKeys')?.addEventListener('click', async () => {
     const textarea = document.getElementById('keyInput') as HTMLTextAreaElement | null;
     if (!textarea) return;
 
+    showSetupError('');
     const input = textarea.value.trim();
     try {
       const parsed = JSON.parse(input) as StoredKeys;
@@ -51,7 +57,7 @@ function showSetup(): void {
       inboxEl.style.display = 'block';
       await renderInbox();
     } catch {
-      alert('Invalid key JSON. Please paste the exact output from Obsidian plugin settings.');
+      showSetupError('Invalid key JSON. Paste the exact output from Obsidian plugin settings → Export private key.');
     }
   });
 }

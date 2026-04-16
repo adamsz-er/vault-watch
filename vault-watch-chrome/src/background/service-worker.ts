@@ -6,24 +6,24 @@ import {
   getStoredKeys,
   type ChromeInboxItem,
 } from '../storage/inbox';
+import type { VaultWatchMessage } from '../messaging/types';
 
-// Listen for payloads from content script
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === 'VAULT_WATCH_PAYLOAD') {
-    handlePayload(message.payload)
-      .then(() => sendResponse({ ok: true }))
-      .catch((err) => {
-        console.error('[vault-watch] Payload error:', err);
-        sendResponse({ ok: false, error: String(err) });
-      });
-    return true;
-  }
+chrome.runtime.onMessage.addListener((message: VaultWatchMessage, _sender, sendResponse) => {
+  switch (message.type) {
+    case 'VAULT_WATCH_PAYLOAD':
+      handlePayload(message.payload)
+        .then(() => sendResponse({ type: 'VAULT_WATCH_PAYLOAD', ok: true }))
+        .catch((err) => {
+          console.error('[vault-watch] Payload error:', err);
+          sendResponse({ type: 'VAULT_WATCH_PAYLOAD', ok: false, error: String(err) });
+        });
+      return true;
 
-  if (message.type === 'GET_UNREAD_COUNT') {
-    getUnreadCount()
-      .then(count => sendResponse({ count }))
-      .catch(() => sendResponse({ count: 0 }));
-    return true;
+    case 'GET_UNREAD_COUNT':
+      getUnreadCount()
+        .then(count => sendResponse({ type: 'GET_UNREAD_COUNT', count }))
+        .catch(() => sendResponse({ type: 'GET_UNREAD_COUNT', count: 0 }));
+      return true;
   }
 });
 
