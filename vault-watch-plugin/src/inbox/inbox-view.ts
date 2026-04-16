@@ -7,6 +7,14 @@ import type { TaskScanner } from './task-scanner';
 import type { TaskActions } from './task-actions';
 import { getEventVerb } from '../utils/event-verbs';
 import { INBOX_TIMESTAMP_REFRESH_MS } from '../core/constants';
+import { groupInboxItems } from './event-grouping';
+import {
+  getInitials,
+  eventColorClass,
+  formatDate,
+  formatTimeAgo,
+  formatItemSummary,
+} from './inbox-formatting';
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * 60 * 60 * 1000;
@@ -144,7 +152,7 @@ export class InboxView extends ItemView {
       items = items.filter(i => i.event.sender.id === this.personFilter);
     }
 
-    const grouped = this.groupItems(items);
+    const grouped = groupInboxItems(items);
     const list = container.createDiv({ cls: 'vw-list' });
 
     if (grouped.length === 0) {
@@ -310,7 +318,7 @@ export class InboxView extends ItemView {
       const chip = row.createEl('button', {
         cls: `vw-chip ${this.personFilter === id ? 'is-active' : ''}`,
       });
-      chip.createSpan({ text: this.initials(info.name), cls: 'vw-chip-avatar' });
+      chip.createSpan({ text: getInitials(info.name), cls: 'vw-chip-avatar' });
       chip.createSpan({ text: info.name, cls: 'vw-chip-name' });
       chip.createSpan({ text: `${info.count}`, cls: 'vw-chip-count' });
       chip.addEventListener('click', () => {
@@ -338,31 +346,8 @@ export class InboxView extends ItemView {
   /**
    * Group adjacent items affecting the same file within 1h, regardless of sender.
    */
-  private groupItems(items: InboxItem[]): InboxItem[][] {
-    if (items.length === 0) return [];
-    const groups: InboxItem[][] = [];
-    let current: InboxItem[] = [items[0]];
-    for (let i = 1; i < items.length; i++) {
-      const prev = current[current.length - 1];
-      const curr = items[i];
-      const sameFile = prev.event.filePath === curr.event.filePath;
-      const closeInTime = prev.receivedAt - curr.receivedAt < HOUR;
-      // Don't fold mentions or reactions into other groups — they need to stand out
-      const folds = curr.event.type !== 'mention' && curr.event.type !== 'reaction'
-                  && prev.event.type !== 'mention' && prev.event.type !== 'reaction';
-      if (sameFile && closeInTime && folds) {
-        current.push(curr);
-      } else {
-        groups.push(current);
-        current = [curr];
-      }
-    }
-    groups.push(current);
-    return groups;
-  }
-
   private renderCard(parent: HTMLElement, item: InboxItem): void {
-    const typeCls = this.eventColorClass(item.event.type);
+    const typeCls = eventColorClass(item.event.type);
     const statusCls = item.status === 'unread' ? 'is-unread'
                     : item.status === 'starred' ? 'is-starred' : '';
     const card = parent.createDiv({ cls: `vw-card ${typeCls} ${statusCls}` });
@@ -371,7 +356,7 @@ export class InboxView extends ItemView {
     const lead = card.createDiv({ cls: 'vw-card-lead' });
     lead.createDiv({ cls: 'vw-dot' });
     lead.createEl('span', {
-      text: this.initials(item.event.sender.name),
+      text: getInitials(item.event.sender.name),
       cls: 'vw-avatar',
     });
 
@@ -385,9 +370,9 @@ export class InboxView extends ItemView {
     const top = body.createDiv({ cls: 'vw-card-top' });
     const phrase = top.createSpan({ cls: 'vw-phrase' });
     phrase.createSpan({ text: item.event.sender.name, cls: 'vw-sender' });
-    phrase.createSpan({ text: this.formatVerb(item), cls: 'vw-verb' });
+    phrase.createSpan({ text: getEventVerb(item.event.type), cls: 'vw-verb' });
     phrase.createSpan({ text: item.event.fileTitle, cls: 'vw-file' });
-    top.createSpan({ text: this.formatTimeAgo(item.receivedAt), cls: 'vw-time' });
+    top.createSpan({ text: formatTimeAgo(item.receivedAt), cls: 'vw-time' });
 
     // Mention pill
     if (item.event.type === 'mention') {
@@ -396,7 +381,7 @@ export class InboxView extends ItemView {
     }
 
     // Summary (one line, truncated)
-    const summary = this.formatSummary(item);
+    const summary = formatItemSummary(item.event.change.summary);
     if (summary) {
       body.createEl('div', { text: summary, cls: 'vw-summary' });
     }
@@ -474,7 +459,7 @@ export class InboxView extends ItemView {
     const isExpanded = this.expandedGroups.has(groupKey);
     const hasUnread = items.some(i => i.status === 'unread');
     const senderNames = Array.from(new Set(items.map(i => i.event.sender.name)));
-    const typeCls = this.eventColorClass(first.event.type);
+    const typeCls = eventColorClass(first.event.type);
     const statusCls = hasUnread ? 'is-unread' : '';
 
     const card = parent.createDiv({ cls: `vw-card vw-card-grouped ${typeCls} ${statusCls}` });
@@ -483,7 +468,7 @@ export class InboxView extends ItemView {
     lead.createDiv({ cls: 'vw-dot' });
     const stack = lead.createDiv({ cls: 'vw-avatar-stack' });
     for (const name of senderNames.slice(0, 3)) {
-      stack.createEl('span', { text: this.initials(name), cls: 'vw-avatar' });
+      stack.createEl('span', { text: getInitials(name), cls: 'vw-avatar' });
     }
 
     const body = card.createDiv({ cls: 'vw-card-body' });
@@ -502,7 +487,7 @@ export class InboxView extends ItemView {
     phrase.createSpan({ text: senderLabel, cls: 'vw-sender' });
     phrase.createSpan({ text: `${items.length} changes to`, cls: 'vw-verb' });
     phrase.createSpan({ text: first.event.fileTitle, cls: 'vw-file' });
-    top.createSpan({ text: this.formatTimeAgo(first.receivedAt), cls: 'vw-time' });
+    top.createSpan({ text: formatTimeAgo(first.receivedAt), cls: 'vw-time' });
 
     // Compact summary: total char delta
     const totalDelta = items.reduce((sum, i) => sum + Math.abs(i.event.change.charDelta || 0), 0);
@@ -534,9 +519,9 @@ export class InboxView extends ItemView {
         const line = details.createDiv({ cls: 'vw-group-line' });
         line.createSpan({ text: item.event.sender.name, cls: 'vw-group-line-sender' });
         line.createSpan({ text: ' · ' });
-        const summary = item.event.change.summary || this.formatVerb(item);
+        const summary = item.event.change.summary || getEventVerb(item.event.type);
         line.createSpan({ text: summary, cls: 'vw-group-line-summary' });
-        line.createSpan({ text: this.formatTimeAgo(item.receivedAt), cls: 'vw-time' });
+        line.createSpan({ text: formatTimeAgo(item.receivedAt), cls: 'vw-time' });
       }
     }
 
@@ -674,7 +659,7 @@ export class InboxView extends ItemView {
       const isMe = member.id === this.myId;
       const card = list.createDiv({ cls: 'vw-member' });
       card.createEl('span', {
-        text: this.initials(member.displayName),
+        text: getInitials(member.displayName),
         cls: 'vw-avatar vw-avatar-lg',
       });
       const info = card.createDiv({ cls: 'vw-member-info' });
@@ -682,63 +667,10 @@ export class InboxView extends ItemView {
       nameRow.createSpan({ text: member.displayName });
       if (isMe) nameRow.createSpan({ text: 'you', cls: 'vw-member-tag' });
       info.createEl('span', {
-        text: `@${member.id} · joined ${this.formatDate(member.joinedAt)}`,
+        text: `@${member.id} · joined ${formatDate(member.joinedAt)}`,
         cls: 'vw-member-meta',
       });
     }
-  }
-
-  private eventColorClass(type: string): string {
-    switch (type) {
-      case 'mention': return 'vw-type-mention';
-      case 'file_created': return 'vw-type-created';
-      case 'file_deleted': return 'vw-type-deleted';
-      case 'share': return 'vw-type-share';
-      case 'reaction': return 'vw-type-reaction';
-      default: return 'vw-type-edit';
-    }
-  }
-
-  private initials(name: string): string {
-    if (!name) return '?';
-    return name
-      .split(/\s+/)
-      .filter(Boolean)
-      .map(w => w[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  }
-
-  private formatVerb(item: InboxItem): string {
-    return getEventVerb(item.event.type);
-  }
-
-  private formatSummary(item: InboxItem): string {
-    const s = item.event.change.summary;
-    if (!s) return '';
-    // Skip summary if it's redundant with the verb (just "Created" / "Deleted")
-    const trivial = ['Created', 'Deleted', 'Renamed'];
-    if (trivial.includes(s)) return '';
-    return s;
-  }
-
-  private formatDate(ts: number): string {
-    const d = new Date(ts);
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  }
-
-  private formatTimeAgo(ts: number): string {
-    const diff = Date.now() - ts;
-    if (diff < 0) return 'now';
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    if (minutes < 1) return 'now';
-    if (minutes < 60) return `${minutes}m`;
-    if (hours < 24) return `${hours}h`;
-    if (days < 7) return `${days}d`;
-    return this.formatDate(ts);
   }
 
   // ─── Tasks Tab ───
@@ -1007,7 +939,7 @@ export class InboxView extends ItemView {
         meta.createSpan({ text: `#${tag}`, cls: 'vw-task-tag' });
       }
     }
-    meta.createSpan({ text: this.formatTimeAgo(task.mtime), cls: 'vw-time' });
+    meta.createSpan({ text: formatTimeAgo(task.mtime), cls: 'vw-time' });
 
     const actions = card.createDiv({ cls: 'vw-task-card-actions' });
     const nextLane = task.lane ? lanes.find(l => l.rank > task.lane!.rank) : null;
