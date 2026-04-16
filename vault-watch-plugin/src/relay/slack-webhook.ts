@@ -3,6 +3,7 @@ import type { NotificationEvent, VaultWatchSettings } from '../types';
 import { sealForRecipient } from '../crypto/encrypt';
 import type { MemberRegistryManager } from '../members/registry';
 import { encodeBase64 } from 'tweetnacl-util';
+import { getEventVerb } from '../utils/event-verbs';
 
 export class SlackWebhook {
   constructor(
@@ -34,7 +35,7 @@ export class SlackWebhook {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*${event.sender.name}* ${this.actionVerb(event.type)} "${event.fileTitle}"`,
+          text: `*${event.sender.name}* ${getEventVerb(event.type)} "${event.fileTitle}"`,
         },
       },
       {
@@ -173,13 +174,4 @@ export class SlackWebhook {
     }
   }
 
-  private actionVerb(type: string): string {
-    switch (type) {
-      case 'file_created': return 'created';
-      case 'file_deleted': return 'deleted';
-      case 'file_renamed': return 'renamed';
-      case 'mention': return 'mentioned you in';
-      default: return 'edited';
-    }
-  }
 }

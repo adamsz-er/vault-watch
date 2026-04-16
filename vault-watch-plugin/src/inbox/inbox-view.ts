@@ -5,6 +5,7 @@ import type { InboxStore } from './inbox-store';
 import { InboxActions } from './actions';
 import type { TaskScanner } from './task-scanner';
 import type { TaskActions } from './task-actions';
+import { getEventVerb } from '../utils/event-verbs';
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * 60 * 60 * 1000;
@@ -709,15 +710,7 @@ export class InboxView extends ItemView {
   }
 
   private formatVerb(item: InboxItem): string {
-    switch (item.event.type) {
-      case 'file_created': return 'created';
-      case 'file_deleted': return 'deleted';
-      case 'file_renamed': return 'renamed';
-      case 'mention': return 'mentioned you in';
-      case 'share': return 'shared';
-      case 'reaction': return 'reacted to';
-      default: return 'edited';
-    }
+    return getEventVerb(item.event.type);
   }
 
   private formatSummary(item: InboxItem): string {

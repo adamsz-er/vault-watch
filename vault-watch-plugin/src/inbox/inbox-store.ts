@@ -9,6 +9,7 @@ import type {
 } from '../types';
 import { INBOX_DIR } from '../types';
 import type { NotificationSound } from '../notifications/sound';
+import { getEventVerb } from '../utils/event-verbs';
 
 function matchesGlob(path: string, pattern: string): boolean {
   const p = pattern.trim();
@@ -247,14 +248,7 @@ export class InboxStore {
   }
 
   private showToast(event: NotificationEvent): void {
-    const verb = event.type === 'file_created' ? 'created'
-      : event.type === 'file_deleted' ? 'deleted'
-      : event.type === 'file_renamed' ? 'renamed'
-      : event.type === 'mention' ? 'mentioned you in'
-      : event.type === 'share' ? 'shared'
-      : 'edited';
-
-    const msg = `${event.sender.name} ${verb} "${event.fileTitle}"`;
+    const msg = `${event.sender.name} ${getEventVerb(event.type)} "${event.fileTitle}"`;
     const detail = event.change.summary;
     const duration = event.priority === 'high' ? 8000 : 5000;
 
