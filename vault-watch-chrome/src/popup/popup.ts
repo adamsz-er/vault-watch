@@ -18,7 +18,6 @@ async function init(): Promise<void> {
     await renderInbox();
   }
 
-  // Footer buttons
   document.getElementById('markAllRead')?.addEventListener('click', async () => {
     await markAllRead();
     await renderInbox();
@@ -30,13 +29,18 @@ async function init(): Promise<void> {
 }
 
 function showSetup(): void {
-  const setupEl = document.getElementById('setup')!;
-  const inboxEl = document.getElementById('inbox')!;
+  const setupEl = document.getElementById('setup');
+  const inboxEl = document.getElementById('inbox');
+  if (!setupEl || !inboxEl) return;
+
   setupEl.style.display = 'block';
   inboxEl.style.display = 'none';
 
   document.getElementById('saveKeys')?.addEventListener('click', async () => {
-    const input = (document.getElementById('keyInput') as HTMLTextAreaElement).value.trim();
+    const textarea = document.getElementById('keyInput') as HTMLTextAreaElement | null;
+    if (!textarea) return;
+
+    const input = textarea.value.trim();
     try {
       const parsed = JSON.parse(input) as StoredKeys;
       if (!parsed.memberId || !parsed.privateKeyX25519) {
@@ -53,16 +57,17 @@ function showSetup(): void {
 }
 
 async function renderInbox(): Promise<void> {
-  const setupEl = document.getElementById('setup')!;
-  const inboxEl = document.getElementById('inbox')!;
+  const setupEl = document.getElementById('setup');
+  const inboxEl = document.getElementById('inbox');
+  const badge = document.getElementById('badge');
+  if (!setupEl || !inboxEl || !badge) return;
+
   setupEl.style.display = 'none';
   inboxEl.style.display = 'block';
 
   const items = await getInboxItems();
   const unread = await getUnreadCount();
 
-  // Badge
-  const badge = document.getElementById('badge')!;
   if (unread > 0) {
     badge.style.display = 'inline';
     badge.textContent = String(unread);
@@ -70,11 +75,13 @@ async function renderInbox(): Promise<void> {
     badge.style.display = 'none';
   }
 
-  // Render items
   inboxEl.innerHTML = '';
 
   if (items.length === 0) {
-    inboxEl.innerHTML = '<div class="empty">No notifications yet</div>';
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'No notifications yet';
+    inboxEl.appendChild(empty);
     return;
   }
 
@@ -82,18 +89,50 @@ async function renderInbox(): Promise<void> {
     const card = document.createElement('div');
     card.className = `card ${item.read ? '' : 'unread'}`;
 
-    const obsidianUrl = `obsidian://open?vault=${encodeURIComponent(item.vault)}&file=${encodeURIComponent(item.filePath)}`;
+    // Header
+    const header = document.createElement('div');
+    header.className = 'card-header';
 
-    card.innerHTML = `
-      <div class="card-header">
-        <span class="sender">${escapeHtml(item.sender)}</span>
-        <span class="time">${formatTimeAgo(item.receivedAt)}</span>
-      </div>
-      <div class="action-text">${escapeHtml(formatAction(item))}</div>
-      <div class="summary">${escapeHtml(item.summary)}</div>
-      ${item.mentionedMembers.length > 0 ? `<span class="mention-badge">${item.mentionedMembers.map(m => '@' + m).join(' ')} mentioned</span>` : ''}
-      <a class="open-btn" href="${obsidianUrl}" target="_blank">Open in Obsidian</a>
-    `;
+    const sender = document.createElement('span');
+    sender.className = 'sender';
+    sender.textContent = item.sender;
+    header.appendChild(sender);
+
+    const time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = formatTimeAgo(item.receivedAt);
+    header.appendChild(time);
+
+    card.appendChild(header);
+
+    // Action
+    const action = document.createElement('div');
+    action.className = 'action-text';
+    action.textContent = formatAction(item);
+    card.appendChild(action);
+
+    // Summary
+    const summary = document.createElement('div');
+    summary.className = 'summary';
+    summary.textContent = item.summary;
+    card.appendChild(summary);
+
+    // Mention badge
+    if (item.mentionedMembers.length > 0) {
+      const mentionBadge = document.createElement('span');
+      mentionBadge.className = 'mention-badge';
+      mentionBadge.textContent = item.mentionedMembers.map(m => '@' + m).join(' ') + ' mentioned';
+      card.appendChild(mentionBadge);
+    }
+
+    // Open button
+    const obsidianUrl = `obsidian://open?vault=${encodeURIComponent(item.vault)}&file=${encodeURIComponent(item.filePath)}`;
+    const openBtn = document.createElement('a');
+    openBtn.className = 'open-btn';
+    openBtn.textContent = 'Open in Obsidian';
+    openBtn.href = obsidianUrl;
+    openBtn.target = '_blank';
+    card.appendChild(openBtn);
 
     card.addEventListener('click', async () => {
       if (!item.read) {
@@ -121,6 +160,7 @@ function formatAction(item: ChromeInboxItem): string {
 
 function formatTimeAgo(ts: number): string {
   const diff = Date.now() - ts;
+  if (diff < 0) return 'just now';
   const min = Math.floor(diff / 60000);
   const hr = Math.floor(diff / 3600000);
   const day = Math.floor(diff / 86400000);
@@ -128,12 +168,6 @@ function formatTimeAgo(ts: number): string {
   if (min < 60) return `${min}m ago`;
   if (hr < 24) return `${hr}h ago`;
   return `${day}d ago`;
-}
-
-function escapeHtml(s: string): string {
-  const div = document.createElement('div');
-  div.textContent = s;
-  return div.innerHTML;
 }
 
 init();

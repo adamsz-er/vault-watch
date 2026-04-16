@@ -123,7 +123,7 @@ export class VaultWatcher {
   }
 
   private onFileRename(file: TFile, oldPath: string): void {
-    if (this.ignoreRules.shouldIgnore(file.path) && this.ignoreRules.shouldIgnore(oldPath)) return;
+    if (this.ignoreRules.shouldIgnore(file.path) || this.ignoreRules.shouldIgnore(oldPath)) return;
 
     // Move snapshot to new path
     const content = this.fileSnapshots.get(oldPath) ?? '';

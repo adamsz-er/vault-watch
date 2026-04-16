@@ -110,8 +110,8 @@ export class EventBuilder {
       fileTitle: this.extractTitle(newPath),
       oldPath,
       change: {
-        changeType: 'heading_changed',
-        summary: `Renamed "${this.extractTitle(oldPath)}" → "${this.extractTitle(newPath)}"`,
+        changeType: 'content_added',
+        summary: `Renamed "${this.extractTitle(oldPath)}" to "${this.extractTitle(newPath)}"`,
         affectedHeadings: [],
         charDelta: 0,
         coalescedCount: 1,

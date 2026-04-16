@@ -69,6 +69,7 @@ The Chrome extension reads encrypted payloads from Slack messages and shows noti
 - **Do Not Disturb** — toggle via command palette or settings to suppress all toasts and sounds
 - **Snooze** — "Snooze 1h" on any inbox card, notification reappears after the timer
 - **Search inbox** — filter notifications by sender, file name, or content
+- **Members tab** — see all registered members in the vault with initials, display name, and join date
 - **Status bar** — clickable unread count always visible at bottom of Obsidian, turns red when unread
 - **Keyboard shortcuts** — `Ctrl+Shift+N` open inbox, `Ctrl+Shift+J` next unread
 - **Inbox sidebar** — filterable inbox (All / Mentions / Changes) with unread badges

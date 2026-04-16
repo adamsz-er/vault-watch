@@ -1,5 +1,5 @@
 import { ItemView, WorkspaceLeaf } from 'obsidian';
-import type { InboxItem, InboxFilter, ReactionEmoji } from '../types';
+import type { InboxItem, InboxFilter, ReactionEmoji, Member } from '../types';
 import { INBOX_VIEW_TYPE, REACTION_EMOJIS } from '../types';
 import type { InboxStore } from './inbox-store';
 import { InboxActions } from './actions';
@@ -7,8 +7,11 @@ import { InboxActions } from './actions';
 export class InboxView extends ItemView {
   private currentFilter: InboxFilter = 'all';
   private searchQuery = '';
+  private showMembers = false;
   private changeHandler: () => void;
   private onReact: ((itemId: string, emoji: string) => Promise<void>) | null = null;
+  private getMembers: () => Member[] = () => [];
+  private myId = '';
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -17,6 +20,11 @@ export class InboxView extends ItemView {
   ) {
     super(leaf);
     this.changeHandler = () => this.render();
+  }
+
+  setMemberSource(getMembers: () => Member[], myId: string): void {
+    this.getMembers = getMembers;
+    this.myId = myId;
   }
 
   setReactionHandler(handler: (itemId: string, emoji: string) => Promise<void>): void {
@@ -86,12 +94,28 @@ export class InboxView extends ItemView {
     for (const filter of ['all', 'mentions', 'changes'] as InboxFilter[]) {
       const tab = tabs.createEl('button', {
         text: filter.charAt(0).toUpperCase() + filter.slice(1),
-        cls: `vault-watch-tab ${this.currentFilter === filter ? 'active' : ''}`,
+        cls: `vault-watch-tab ${this.currentFilter === filter && !this.showMembers ? 'active' : ''}`,
       });
       tab.addEventListener('click', () => {
         this.currentFilter = filter;
+        this.showMembers = false;
         this.render();
       });
+    }
+    // Members tab
+    const membersTab = tabs.createEl('button', {
+      text: 'Members',
+      cls: `vault-watch-tab ${this.showMembers ? 'active' : ''}`,
+    });
+    membersTab.addEventListener('click', () => {
+      this.showMembers = true;
+      this.render();
+    });
+
+    // Members view
+    if (this.showMembers) {
+      this.renderMembers(container);
+      return;
     }
 
     // Items
@@ -250,6 +274,67 @@ export class InboxView extends ItemView {
       cls: 'vault-watch-btn-link',
     });
     starBtn.addEventListener('click', () => this.inboxStore.star(item.id));
+  }
+
+  private renderMembers(container: HTMLElement): void {
+    const members = this.getMembers();
+    const list = container.createDiv({ cls: 'vault-watch-members-list' });
+
+    if (members.length === 0) {
+      list.createEl('p', {
+        text: 'No members registered yet. Run setup in settings.',
+        cls: 'vault-watch-empty',
+      });
+      return;
+    }
+
+    // Show self first, then others sorted by name
+    const sorted = [...members].sort((a, b) => {
+      if (a.id === this.myId) return -1;
+      if (b.id === this.myId) return 1;
+      return a.displayName.localeCompare(b.displayName);
+    });
+
+    for (const member of sorted) {
+      const isMe = member.id === this.myId;
+      const card = list.createDiv({ cls: 'vault-watch-member-card' });
+
+      const nameRow = card.createDiv({ cls: 'vault-watch-member-header' });
+      const initials = member.displayName
+        .split(/\s+/)
+        .map(w => w[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+      nameRow.createEl('span', { text: initials, cls: 'vault-watch-member-avatar' });
+
+      const nameEl = nameRow.createDiv({ cls: 'vault-watch-member-info' });
+      nameEl.createEl('strong', {
+        text: member.displayName + (isMe ? ' (you)' : ''),
+      });
+      nameEl.createEl('span', {
+        text: `@${member.id}`,
+        cls: 'vault-watch-member-id',
+      });
+
+      const meta = card.createDiv({ cls: 'vault-watch-member-meta' });
+      meta.createEl('span', {
+        text: `Joined ${this.formatDate(member.joinedAt)}`,
+        cls: 'vault-watch-time',
+      });
+    }
+
+    // Member count
+    const footer = container.createDiv({ cls: 'vault-watch-footer' });
+    footer.createEl('span', {
+      text: `${members.length} member${members.length !== 1 ? 's' : ''} in this vault`,
+      cls: 'vault-watch-time',
+    });
+  }
+
+  private formatDate(ts: number): string {
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
   private formatAction(item: InboxItem): string {

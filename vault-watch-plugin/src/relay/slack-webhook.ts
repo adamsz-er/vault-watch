@@ -78,6 +78,7 @@ export class SlackWebhook {
   }
 
   private buildBatchBlocks(events: NotificationEvent[], encPayload: string): object[] {
+    if (events.length === 0) return [];
     const sender = events[0].sender.name;
     const blocks: object[] = [
       {

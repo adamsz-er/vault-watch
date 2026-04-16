@@ -91,6 +91,10 @@ export default class VaultWatchPlugin extends Plugin {
       const actions = new InboxActions(this.app);
       const view = new InboxView(leaf, this.inboxStore, actions);
       view.setReactionHandler((itemId, emoji) => this.sendReaction(itemId, emoji));
+      view.setMemberSource(
+        () => this.memberRegistry.getMembers(),
+        this.settings.memberId
+      );
       return view;
     });
 
@@ -303,23 +307,29 @@ export default class VaultWatchPlugin extends Plugin {
 
   private watchForNewMembers(): void {
     const knownMembers = new Set(this.memberRegistry.getMembers().map(m => m.id));
+    const membersDir = 'Z_Meta/.vault-watch/members/';
 
-    this.registerEvent(
-      this.app.vault.on('modify', async (file) => {
-        if (!(file instanceof TFile)) return;
-        if (file.path !== 'Z_Meta/.vault-watch/members.json') return;
+    // Watch for new/modified member files in members/ directory
+    const handleMemberChange = async (file: TFile) => {
+      if (!file.path.startsWith(membersDir) || file.extension !== 'json') return;
 
-        await this.memberRegistry.loadRegistry();
-        const current = this.memberRegistry.getMembers();
+      await this.memberRegistry.loadRegistry();
+      const current = this.memberRegistry.getMembers();
 
-        for (const member of current) {
-          if (!knownMembers.has(member.id) && member.id !== this.settings.memberId) {
-            new Notice(`${member.displayName} joined Vault Watch!`, 8000);
-            knownMembers.add(member.id);
-          }
+      for (const member of current) {
+        if (!knownMembers.has(member.id) && member.id !== this.settings.memberId) {
+          new Notice(`${member.displayName} joined Vault Watch!`, 8000);
+          knownMembers.add(member.id);
         }
-      })
-    );
+      }
+    };
+
+    this.registerEvent(this.app.vault.on('create', async (file) => {
+      if (file instanceof TFile) await handleMemberChange(file);
+    }));
+    this.registerEvent(this.app.vault.on('modify', async (file) => {
+      if (file instanceof TFile) await handleMemberChange(file);
+    }));
   }
 
   private async sendReaction(itemId: string, emoji: string): Promise<void> {

@@ -37,7 +37,7 @@ export class Coalescer {
 
       // Check if this change is high-priority — flush immediately if so
       if (this.isHighPriority(existing.firstContent, content)) {
-        this.closeSession(filePath);
+        void this.closeSession(filePath);
         return;
       }
 
@@ -55,7 +55,7 @@ export class Coalescer {
         const analysis = this.diffAnalyzer.analyze(firstContent, content);
         if (analysis.isSignificant) {
           const event = this.eventBuilder.build(filePath, analysis, 1, eventType);
-          this.dispatchEvent(event);
+          void this.dispatchEvent(event);
         }
         return;
       }
@@ -177,7 +177,7 @@ export class Coalescer {
     // High priority = flush immediately
     if (event.priority === 'high') {
       this.slackBatch.hasHighPriority = true;
-      this.flushSlackBatch();
+      void this.flushSlackBatch();
     }
   }
 

@@ -7,10 +7,6 @@ export interface SealedPayload {
   ephemeralPub: string;
 }
 
-/**
- * Decrypt a sealed payload using the recipient's X25519 private key.
- * Shared between Obsidian plugin and Chrome extension.
- */
 export function unseal(sealed: SealedPayload, recipientX25519Secret: string): string {
   const ciphertext = decodeBase64(sealed.ciphertext);
   const nonce = decodeBase64(sealed.nonce);
@@ -31,8 +27,8 @@ export function unseal(sealed: SealedPayload, recipientX25519Secret: string): st
  */
 export function parseCompactPayload(raw: string): SealedPayload {
   const parts = raw.split('.');
-  if (parts.length !== 3) {
-    throw new Error('Invalid payload format');
+  if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) {
+    throw new Error('Invalid payload format: expected nonce.ephemeralPub.ciphertext');
   }
   return {
     nonce: parts[0],

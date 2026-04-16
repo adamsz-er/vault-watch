@@ -187,7 +187,8 @@ export interface PublicKeyBundle {
 // ─── Constants ───
 
 export const VAULT_WATCH_DIR = 'Z_Meta/.vault-watch';
-export const MEMBERS_FILE = `${VAULT_WATCH_DIR}/members.json`;
+export const MEMBERS_FILE = `${VAULT_WATCH_DIR}/members.json`; // Legacy, kept for migration
+export const MEMBERS_DIR = `${VAULT_WATCH_DIR}/members`;
 export const KEYS_DIR = `${VAULT_WATCH_DIR}/keys`;
 export const OUTBOX_DIR = `${VAULT_WATCH_DIR}/outbox`;
 export const INBOX_DIR = `${VAULT_WATCH_DIR}/inbox`;
