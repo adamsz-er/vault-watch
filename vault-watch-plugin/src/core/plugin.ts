@@ -29,6 +29,7 @@ export default class VaultWatchPlugin extends Plugin {
   private slackWebhook!: SlackWebhook;
   private dispatcher!: Dispatcher;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
+  private ribbonIconEl: HTMLElement | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -91,10 +92,14 @@ export default class VaultWatchPlugin extends Plugin {
     // Add settings tab
     this.addSettingTab(new VaultWatchSettingTab(this.app, this));
 
-    // Add ribbon icon
-    this.addRibbonIcon('bell', 'Vault Watch Inbox', () => {
+    // Add ribbon icon with unread badge
+    this.ribbonIconEl = this.addRibbonIcon('bell', 'Vault Watch Inbox', () => {
       this.activateView();
     });
+    this.ribbonIconEl.addClass('vault-watch-ribbon');
+
+    // Update badge when inbox changes
+    this.inboxStore.onChange(() => this.updateRibbonBadge());
 
     // Add commands
     this.addCommand({
@@ -211,18 +216,41 @@ export default class VaultWatchPlugin extends Plugin {
     await this.startWatching();
   }
 
+  private updateRibbonBadge(): void {
+    if (!this.ribbonIconEl) return;
+    const count = this.inboxStore.getUnreadCount();
+
+    // Remove existing badge
+    const existing = this.ribbonIconEl.querySelector('.vault-watch-ribbon-badge');
+    if (existing) existing.remove();
+
+    if (count > 0) {
+      this.ribbonIconEl.addClass('has-unread');
+      const badge = this.ribbonIconEl.createEl('span', {
+        text: count > 99 ? '99+' : String(count),
+        cls: 'vault-watch-ribbon-badge',
+      });
+    } else {
+      this.ribbonIconEl.removeClass('has-unread');
+    }
+  }
+
   private async startWatching(): Promise<void> {
     // Snapshot existing files for diff baseline
     await this.watcher.snapshotAll();
 
     // Load inbox from disk
     await this.inboxStore.loadFromDisk();
+    this.updateRibbonBadge();
 
     // Start file watcher
     this.watcher.start();
 
     // Start outbox watcher (for incoming notifications)
     this.vaultRelay.startWatching();
+
+    // Watch for new members joining (members.json changes)
+    this.watchForNewMembers();
 
     // Periodic outbox cleanup (every hour)
     this.cleanupInterval = setInterval(
@@ -231,6 +259,30 @@ export default class VaultWatchPlugin extends Plugin {
     );
 
     console.log('[vault-watch] Started watching vault');
+  }
+
+  private watchForNewMembers(): void {
+    const knownMembers = new Set(this.memberRegistry.getMembers().map(m => m.id));
+
+    this.registerEvent(
+      this.app.vault.on('modify', async (file) => {
+        if (!(file instanceof TFile)) return;
+        if (file.path !== 'Z_Meta/.vault-watch/members.json') return;
+
+        await this.memberRegistry.loadRegistry();
+        const current = this.memberRegistry.getMembers();
+
+        for (const member of current) {
+          if (!knownMembers.has(member.id) && member.id !== this.settings.memberId) {
+            new Notice(
+              `${member.displayName} joined Vault Watch!`,
+              8000
+            );
+            knownMembers.add(member.id);
+          }
+        }
+      })
+    );
   }
 
   private async pushFile(file: TFile): Promise<void> {

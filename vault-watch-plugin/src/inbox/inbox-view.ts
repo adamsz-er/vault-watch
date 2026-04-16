@@ -138,6 +138,17 @@ export class InboxView extends ItemView {
       }
     });
 
+    const replyBtn = actions.createEl('button', {
+      text: 'Reply',
+      cls: 'vault-watch-btn',
+    });
+    replyBtn.addEventListener('click', async () => {
+      await this.inboxActions.replyToItem(item);
+      if (item.status === 'unread') {
+        await this.inboxStore.markRead(item.id);
+      }
+    });
+
     if (item.status === 'unread') {
       const readBtn = actions.createEl('button', {
         text: 'Mark Read',

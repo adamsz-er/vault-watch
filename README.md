@@ -61,6 +61,9 @@ The Chrome extension reads encrypted payloads from Slack messages and shows noti
 - **Tag-based priority** — `#urgent` and `#priority` tags trigger immediate notifications (inline + frontmatter)
 - **Toast notifications** — in-app Obsidian toasts when changes arrive (8s for high priority, 5s normal)
 - **Push to Vault Watch** — right-click any file or folder → "Push to Vault Watch" to manually share
+- **Reply from inbox** — click Reply on any notification to open the file with `@sender` pre-inserted
+- **Unread badge** — red badge with count on the ribbon icon, icon turns red when unread
+- **New member alerts** — toast notification when a new team member joins Vault Watch
 - **Inbox sidebar** — filterable inbox (All / Mentions / Changes) with unread badges
 - **Slack integration** — Block Kit messages with encrypted payload + "Open in Obsidian" deep link
 - **Chrome extension** — extracts encrypted payloads from Slack, desktop notifications, popup inbox
