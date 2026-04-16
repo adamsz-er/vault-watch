@@ -33,7 +33,7 @@ export class VaultWatchSettingTab extends PluginSettingTab {
       .setDesc('Your unique identifier (lowercase, no spaces)')
       .addText(text =>
         text
-          .setPlaceholder('adam')
+          .setPlaceholder('alice')
           .setValue(this.plugin.settings.memberId)
           .onChange(async (value) => {
             this.plugin.settings.memberId = value.toLowerCase().replace(/\s/g, '');
@@ -46,7 +46,7 @@ export class VaultWatchSettingTab extends PluginSettingTab {
       .setDesc('Your display name shown in notifications')
       .addText(text =>
         text
-          .setPlaceholder('Adam')
+          .setPlaceholder('Alice')
           .setValue(this.plugin.settings.displayName)
           .onChange(async (value) => {
             this.plugin.settings.displayName = value;
@@ -59,7 +59,7 @@ export class VaultWatchSettingTab extends PluginSettingTab {
       .setDesc('Name of this vault (used in Obsidian deep links)')
       .addText(text =>
         text
-          .setPlaceholder('jumbo-vault')
+          .setPlaceholder('my-vault')
           .setValue(this.plugin.settings.vaultName)
           .onChange(async (value) => {
             this.plugin.settings.vaultName = value;
@@ -333,7 +333,7 @@ export class VaultWatchSettingTab extends PluginSettingTab {
   private renderInboxTasksSection(containerEl: HTMLElement): void {
     containerEl.createEl('h3', { text: 'Inbox Tasks' });
     containerEl.createEl('p', {
-      text: 'Surface a folder-based inbox (e.g. "0 - INBOX/Adam/1 - FOR REVIEW/") as an inbox view with one-click status transitions. Folder structure is the source of truth — no frontmatter required.',
+      text: 'Surface a folder-based inbox (e.g. "0 - INBOX/Alice/1 - FOR REVIEW/") as an inbox view with one-click status transitions. Folder structure is the source of truth — no frontmatter required.',
       cls: 'vault-watch-setup-status',
     });
 
@@ -445,7 +445,7 @@ export class VaultWatchSettingTab extends PluginSettingTab {
       .addTextArea(text => {
         const entries = Object.entries(cfg.personFolderMap);
         text
-          .setPlaceholder('adam = Adam\nangelo = Angelo')
+          .setPlaceholder('alice = Alice\nbob = Bob')
           .setValue(entries.map(([k, v]) => `${k} = ${v}`).join('\n'))
           .onChange(async (value) => {
             const map: Record<string, string> = {};

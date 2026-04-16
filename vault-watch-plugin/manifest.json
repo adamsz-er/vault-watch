@@ -4,6 +4,7 @@
   "version": "0.7.0",
   "minAppVersion": "1.5.0",
   "description": "Notification and inbox system for shared Obsidian vaults synced via Relay",
-  "author": "Adam & Angelo",
+  "author": "adamsz-er",
+  "authorUrl": "https://github.com/adamsz-er/vault-watch",
   "isDesktopOnly": false
 }

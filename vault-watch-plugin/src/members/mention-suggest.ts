@@ -10,7 +10,7 @@ import type { Member } from '../types';
 
 export class MentionSuggest extends EditorSuggest<Member> {
   constructor(
-    private app: import('obsidian').App,
+    app: import('obsidian').App,
     private getMembers: () => Member[]
   ) {
     super(app);

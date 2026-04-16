@@ -3,3 +3,26 @@ dist/
 main.js
 *.js.map
 .DS_Store
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
+
+# Plugin runtime data (contains private keys — must NEVER be committed)
+data.json
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+Thumbs.db
