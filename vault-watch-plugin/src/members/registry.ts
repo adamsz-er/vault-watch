@@ -226,14 +226,14 @@ export class MemberRegistryManager {
   private async ensureInbox(memberId: string): Promise<void> {
     const path = `${INBOX_DIR}/${memberId}`;
     if (!this.vault.getAbstractFileByPath(path)) {
-      await this.vault.create(`${path}/.gitkeep`, '');
+      await this.vault.create(`${path}/_dir`, '');
     }
   }
 
   private async ensureDirectories(): Promise<void> {
     for (const dir of [VAULT_WATCH_DIR, MEMBERS_DIR, KEYS_DIR, OUTBOX_DIR, INBOX_DIR]) {
       if (!this.vault.getAbstractFileByPath(dir)) {
-        try { await this.vault.create(`${dir}/.gitkeep`, ''); }
+        try { await this.vault.create(`${dir}/_dir`, ''); }
         catch { /* already exists */ }
       }
     }
