@@ -18,6 +18,7 @@ import { TaskActions } from '../inbox/task-actions';
 import { VaultRelay } from '../relay/vault-relay';
 import { SlackWebhook } from '../relay/slack-webhook';
 import { generateKeySet, createPublicKeyBundle } from '../crypto/keys';
+import { notifyError } from '../utils/notify';
 import { ulid } from 'ulid';
 
 export default class VaultWatchPlugin extends Plugin {
@@ -475,8 +476,7 @@ export default class VaultWatchPlugin extends Plugin {
 
       new Notice(`Pushed "${fileTitle}" to Vault Watch`);
     } catch (err) {
-      console.error('[vault-watch] Push failed:', err);
-      new Notice('Vault Watch: Push failed');
+      notifyError('Vault Watch: Push failed', err);
     }
   }
 

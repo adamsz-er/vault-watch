@@ -1,6 +1,7 @@
 import { App, TFile, TFolder, Notice } from 'obsidian';
 import type { InboxTask, InboxTaskLane, Member, VaultWatchSettings } from '../types';
 import type { TaskScanner } from './task-scanner';
+import { notifyError } from '../utils/notify';
 
 /**
  * CRDT-safe task mutations. All moves go through app.vault.rename so Relay
@@ -54,8 +55,7 @@ export class TaskActions {
       await this.app.fileManager.renameFile(file, newPath);
       new Notice(`Moved to ${lane.name}`);
     } catch (err) {
-      console.error('[vault-watch] Advance failed:', err);
-      new Notice(`Move failed: ${(err as Error).message}`);
+      notifyError(`Move failed: ${(err as Error).message}`, err);
     }
   }
 
@@ -83,8 +83,7 @@ export class TaskActions {
       await this.app.fileManager.renameFile(file, newPath);
       new Notice(`Reassigned to ${member.displayName}`);
     } catch (err) {
-      console.error('[vault-watch] Reassign failed:', err);
-      new Notice(`Reassign failed: ${(err as Error).message}`);
+      notifyError(`Reassign failed: ${(err as Error).message}`, err);
     }
   }
 
