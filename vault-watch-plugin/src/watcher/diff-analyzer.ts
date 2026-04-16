@@ -47,8 +47,10 @@ export class DiffAnalyzer {
     // Extract mentions from added content
     const mentionedMembers = this.extractMentions(addedLines);
 
-    // Extract tags from added content
-    const addedTags = this.extractTags(addedLines, removedLines);
+    // Extract tags from body + frontmatter
+    const inlineTags = this.extractInlineTags(addedLines, removedLines);
+    const frontmatterTags = this.extractFrontmatterTags(oldContent, newContent);
+    const addedTags = [...new Set([...inlineTags, ...frontmatterTags])];
 
     // Determine classification
     const classification = this.classify(addedLines, removedLines, mentionedMembers, addedTags);
@@ -144,7 +146,7 @@ export class DiffAnalyzer {
     return mentions;
   }
 
-  private extractTags(addedLines: string[], removedLines: string[]): string[] {
+  private extractInlineTags(addedLines: string[], removedLines: string[]): string[] {
     const getTags = (lines: string[]) => {
       const tags: string[] = [];
       const tagRe = /#(\w[\w/-]*)/g;
@@ -162,6 +164,56 @@ export class DiffAnalyzer {
     const added = getTags(addedLines);
     const removed = getTags(removedLines);
     return added.filter(t => !removed.includes(t));
+  }
+
+  /**
+   * Parse frontmatter tags and return newly added ones.
+   * Handles both formats:
+   *   tags: [urgent, review]
+   *   tags:
+   *     - urgent
+   *     - review
+   */
+  private extractFrontmatterTags(oldContent: string, newContent: string): string[] {
+    const oldTags = this.parseFrontmatterTags(oldContent);
+    const newTags = this.parseFrontmatterTags(newContent);
+    return newTags.filter(t => !oldTags.includes(t));
+  }
+
+  private parseFrontmatterTags(content: string): string[] {
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) return [];
+
+    const fm = fmMatch[1];
+
+    // Inline array: tags: [foo, bar] or tags: [foo, "bar baz"]
+    const inlineMatch = fm.match(/^tags:\s*\[([^\]]*)\]/m);
+    if (inlineMatch) {
+      return inlineMatch[1]
+        .split(',')
+        .map(t => t.trim().replace(/^["']|["']$/g, ''))
+        .filter(t => t.length > 0);
+    }
+
+    // List format:
+    // tags:
+    //   - foo
+    //   - bar
+    const listMatch = fm.match(/^tags:\s*\n((?:\s+-\s+.+\n?)+)/m);
+    if (listMatch) {
+      return listMatch[1]
+        .split('\n')
+        .map(l => l.replace(/^\s*-\s*/, '').trim().replace(/^["']|["']$/g, ''))
+        .filter(t => t.length > 0);
+    }
+
+    // Single value: tags: urgent
+    const singleMatch = fm.match(/^tags:\s+(\S+)/m);
+    if (singleMatch) {
+      return [singleMatch[1].replace(/^["']|["']$/g, '')];
+    }
+
+    return [];
   }
 
   private findAffectedHeadings(

@@ -1,4 +1,4 @@
-import { Vault, TFile, TFolder } from 'obsidian';
+import { Vault, TFile, TFolder, Notice } from 'obsidian';
 import type {
   InboxItem,
   InboxItemStatus,
@@ -56,6 +56,7 @@ export class InboxStore {
 
     this.items.push(item);
     await this.persistItem(item);
+    this.showToast(event);
     this.notifyChange();
   }
 
@@ -139,6 +140,20 @@ export class InboxStore {
     } else {
       await this.vault.create(path, content);
     }
+  }
+
+  private showToast(event: NotificationEvent): void {
+    const verb = event.type === 'file_created' ? 'created'
+      : event.type === 'file_deleted' ? 'deleted'
+      : event.type === 'file_renamed' ? 'renamed'
+      : event.type === 'mention' ? 'mentioned you in'
+      : 'edited';
+
+    const msg = `${event.sender.name} ${verb} "${event.fileTitle}"`;
+    const detail = event.change.summary;
+    const duration = event.priority === 'high' ? 8000 : 5000;
+
+    new Notice(`${msg}\n${detail}`, duration);
   }
 
   private notifyChange(): void {

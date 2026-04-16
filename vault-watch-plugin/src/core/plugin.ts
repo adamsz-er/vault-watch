@@ -1,5 +1,5 @@
-import { Plugin, WorkspaceLeaf, Notice } from 'obsidian';
-import type { VaultWatchSettings, Member } from '../types';
+import { Plugin, WorkspaceLeaf, Notice, TFile, TFolder, Menu } from 'obsidian';
+import type { VaultWatchSettings, Member, NotificationEvent } from '../types';
 import { DEFAULT_SETTINGS, INBOX_VIEW_TYPE } from '../types';
 import { VaultWatchSettingTab } from './settings';
 import { IgnoreRules } from '../watcher/ignore-rules';
@@ -22,6 +22,7 @@ export default class VaultWatchPlugin extends Plugin {
 
   private watcher!: VaultWatcher;
   private coalescer!: Coalescer;
+  private eventBuilder!: EventBuilder;
   private memberRegistry!: MemberRegistryManager;
   private inboxStore!: InboxStore;
   private vaultRelay!: VaultRelay;
@@ -52,7 +53,7 @@ export default class VaultWatchPlugin extends Plugin {
     this.dispatcher = new Dispatcher(this.vaultRelay, this.slackWebhook);
 
     // Initialize event builder
-    const eventBuilder = new EventBuilder(
+    this.eventBuilder = new EventBuilder(
       this.settings,
       () => this.memberRegistry.getMembers()
     );
@@ -63,7 +64,7 @@ export default class VaultWatchPlugin extends Plugin {
     // Initialize coalescer
     this.coalescer = new Coalescer(
       this.settings,
-      eventBuilder,
+      this.eventBuilder,
       this.dispatcher,
       (filePath) => this.watcher.getLastKnownContent(filePath)
     );
@@ -107,6 +108,38 @@ export default class VaultWatchPlugin extends Plugin {
       name: 'Mark All Read',
       callback: () => this.inboxStore.markAllRead(),
     });
+
+    this.addCommand({
+      id: 'push-current-file',
+      name: 'Push Current File to Vault Watch',
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file) return false;
+        if (checking) return true;
+        this.pushFile(file);
+      },
+    });
+
+    // Right-click context menu: "Push to Vault Watch" (files + folders)
+    this.registerEvent(
+      this.app.workspace.on('file-menu', (menu: Menu, file) => {
+        if (file instanceof TFile && file.path.endsWith('.md')) {
+          menu.addItem((item) => {
+            item
+              .setTitle('Push to Vault Watch')
+              .setIcon('message-square')
+              .onClick(() => this.pushFile(file));
+          });
+        } else if (file instanceof TFolder) {
+          menu.addItem((item) => {
+            item
+              .setTitle('Push folder to Vault Watch')
+              .setIcon('message-square')
+              .onClick(() => this.pushFolder(file));
+          });
+        }
+      })
+    );
 
     // Start when layout is ready
     this.app.workspace.onLayoutReady(async () => {
@@ -198,6 +231,74 @@ export default class VaultWatchPlugin extends Plugin {
     );
 
     console.log('[vault-watch] Started watching vault');
+  }
+
+  private async pushFile(file: TFile): Promise<void> {
+    if (!this.settings.setupComplete) {
+      new Notice('Vault Watch: Run setup first in settings');
+      return;
+    }
+
+    try {
+      const content = await this.app.vault.cachedRead(file);
+      const members = this.memberRegistry.getMembers();
+      const recipients = members.filter(m => m.id !== this.settings.memberId).map(m => m.id);
+
+      if (recipients.length === 0) {
+        new Notice('Vault Watch: No other members registered yet');
+        return;
+      }
+
+      const fileTitle = file.basename;
+      const event: NotificationEvent = {
+        id: (await import('ulid')).ulid(),
+        v: 1,
+        type: 'share',
+        ts: Date.now(),
+        sender: { id: this.settings.memberId, name: this.settings.displayName },
+        vault: this.settings.vaultName,
+        filePath: file.path,
+        fileTitle,
+        change: {
+          changeType: 'content_added',
+          summary: `Shared "${fileTitle}"`,
+          affectedHeadings: [],
+          charDelta: content.length,
+          addedExcerpt: content.slice(0, 200),
+          coalescedCount: 1,
+        },
+        recipients,
+        mentionedMembers: [],
+        priority: 'high',
+      };
+
+      await this.dispatcher.dispatchToVault(event);
+      if (this.settings.slackEnabled) {
+        await this.slackWebhook.sendSingle(event);
+      }
+
+      new Notice(`Pushed "${fileTitle}" to Vault Watch`);
+    } catch (err) {
+      console.error('[vault-watch] Push failed:', err);
+      new Notice('Vault Watch: Push failed');
+    }
+  }
+
+  private async pushFolder(folder: TFolder): Promise<void> {
+    const mdFiles = this.app.vault.getMarkdownFiles().filter(
+      f => f.path.startsWith(folder.path + '/')
+    );
+
+    if (mdFiles.length === 0) {
+      new Notice('No markdown files in this folder');
+      return;
+    }
+
+    for (const file of mdFiles) {
+      await this.pushFile(file);
+    }
+
+    new Notice(`Pushed ${mdFiles.length} files from "${folder.name}"`);
   }
 
   private async activateView(): Promise<void> {

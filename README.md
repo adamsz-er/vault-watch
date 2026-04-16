@@ -12,7 +12,7 @@ Notification and inbox system for shared Obsidian vaults synced via Relay. Get a
 4. Click **Add Plugin**
 5. Enable "Vault Watch" in Community Plugins
 
-BRAT handles updates automatically.
+BRAT checks for updates automatically on Obsidian startup. You can also manually check: BRAT settings → **Check for updates**.
 
 ### Option B: Manual
 
@@ -20,6 +20,14 @@ BRAT handles updates automatically.
 2. Create folder: `<your-vault>/.obsidian/plugins/vault-watch/`
 3. Copy the 3 files into that folder
 4. Restart Obsidian → enable "Vault Watch" in Community Plugins
+
+## Updating
+
+### BRAT
+Updates are automatic. BRAT checks on every Obsidian restart and pulls the latest release. To force a check: BRAT settings → **Check for updates**.
+
+### Manual
+Download the latest `main.js`, `manifest.json`, and `styles.css` from [releases](https://github.com/adamsz-er/vault-watch/releases/latest), replace the files in `.obsidian/plugins/vault-watch/`, and restart Obsidian.
 
 ## Setup (first time)
 
@@ -43,15 +51,19 @@ BRAT handles updates automatically.
 
 The Chrome extension reads encrypted payloads from Slack messages and shows notifications + an inbox popup.
 
-## How It Works
+## Features
 
-- Watches for file changes in your vault (create, edit, delete, rename)
-- 3-layer anti-spam: per-file debounce → session coalescing → Slack batching
-- Meaningful change detection (ignores whitespace, CRDT artifacts)
-- E2E encrypted with TweetNaCl (X25519 + Ed25519)
-- Notifications delivered via vault relay (outbox files synced by Relay) + Slack
-- `@mention` autocomplete for team members
-- Inbox sidebar in Obsidian with unread badges
+- **Automatic change detection** — watches for file create, edit, delete, rename
+- **3-layer anti-spam** — per-file debounce → session coalescing → Slack batching
+- **Smart diff** — ignores whitespace, CRDT artifacts; summarizes meaningful changes
+- **E2E encrypted** — TweetNaCl sealed box (X25519 + Ed25519), zero-knowledge relay
+- **@mention autocomplete** — type `@` to mention team members, triggers high-priority alerts
+- **Tag-based priority** — `#urgent` and `#priority` tags trigger immediate notifications (inline + frontmatter)
+- **Toast notifications** — in-app Obsidian toasts when changes arrive (8s for high priority, 5s normal)
+- **Push to Vault Watch** — right-click any file or folder → "Push to Vault Watch" to manually share
+- **Inbox sidebar** — filterable inbox (All / Mentions / Changes) with unread badges
+- **Slack integration** — Block Kit messages with encrypted payload + "Open in Obsidian" deep link
+- **Chrome extension** — extracts encrypted payloads from Slack, desktop notifications, popup inbox
 
 ## Architecture
 
