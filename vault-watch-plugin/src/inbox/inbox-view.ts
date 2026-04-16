@@ -12,6 +12,7 @@ export class InboxView extends ItemView {
   private onReact: ((itemId: string, emoji: string) => Promise<void>) | null = null;
   private getMembers: () => Member[] = () => [];
   private myId = '';
+  private pluginVersion = '';
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -22,9 +23,10 @@ export class InboxView extends ItemView {
     this.changeHandler = () => this.render();
   }
 
-  setMemberSource(getMembers: () => Member[], myId: string): void {
+  setMemberSource(getMembers: () => Member[], myId: string, version: string): void {
     this.getMembers = getMembers;
     this.myId = myId;
+    this.pluginVersion = version;
   }
 
   setReactionHandler(handler: (itemId: string, emoji: string) => Promise<void>): void {
@@ -324,12 +326,18 @@ export class InboxView extends ItemView {
       });
     }
 
-    // Member count
-    const footer = container.createDiv({ cls: 'vault-watch-footer' });
+    // Footer with count + version
+    const footer = container.createDiv({ cls: 'vault-watch-members-footer' });
     footer.createEl('span', {
       text: `${members.length} member${members.length !== 1 ? 's' : ''} in this vault`,
       cls: 'vault-watch-time',
     });
+    if (this.pluginVersion) {
+      footer.createEl('span', {
+        text: `v${this.pluginVersion}`,
+        cls: 'vault-watch-version',
+      });
+    }
   }
 
   private formatDate(ts: number): string {

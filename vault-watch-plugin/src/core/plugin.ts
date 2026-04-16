@@ -93,7 +93,8 @@ export default class VaultWatchPlugin extends Plugin {
       view.setReactionHandler((itemId, emoji) => this.sendReaction(itemId, emoji));
       view.setMemberSource(
         () => this.memberRegistry.getMembers(),
-        this.settings.memberId
+        this.settings.memberId,
+        this.manifest.version
       );
       return view;
     });

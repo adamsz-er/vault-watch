@@ -366,6 +366,21 @@
   padding-left: 36px;
 }
 
+.vault-watch-members-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.vault-watch-version {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-family: var(--font-monospace);
+}
+
 /* ─── Settings ─── */
 
 .vault-watch-setup-status {
