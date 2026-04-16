@@ -227,12 +227,7 @@ export default class VaultWatchPlugin extends Plugin {
     this.registerEvent(
       this.app.workspace.on('file-menu', (menu: Menu, file) => {
         if (file instanceof TFile && file.path.endsWith('.md')) {
-          menu.addItem((item) => {
-            item
-              .setTitle('Send to Vault Watch')
-              .setIcon('bell-ring')
-              .onClick(() => this.promptSendFile(file));
-          });
+          this.addSendSubmenu(menu, file);
         } else if (file instanceof TFolder) {
           menu.addItem((item) => {
             item
@@ -431,6 +426,112 @@ export default class VaultWatchPlugin extends Plugin {
 
     await this.dispatcher.dispatchToVault(event);
     new Notice(`Reacted ${emoji}`);
+  }
+
+  private addSendSubmenu(menu: Menu, file: TFile): void {
+    menu.addItem((item) => {
+      item.setTitle('Send to Vault Watch').setIcon('bell-ring');
+
+      // setSubmenu is available in Obsidian 1.4+. Fallback to direct click if not.
+      const subApi = (item as unknown as { setSubmenu?: () => Menu }).setSubmenu;
+      if (typeof subApi !== 'function') {
+        item.onClick(() => this.promptSendFile(file));
+        return;
+      }
+      const sub = (item as unknown as { setSubmenu: () => Menu }).setSubmenu();
+
+      if (!this.settings.setupComplete) {
+        sub.addItem(i => i.setTitle('Run setup first in settings').setIcon('settings'));
+        return;
+      }
+
+      const others = this.memberRegistry.getMembers().filter(m => m.id !== this.settings.memberId);
+      if (others.length === 0) {
+        sub.addItem(i => i.setTitle('No other members yet').setIcon('users'));
+        return;
+      }
+
+      // ─── Notify (encrypted event → notification inbox) ───
+      sub.addItem(i =>
+        i.setTitle('Notify everyone')
+          .setIcon('bell-ring')
+          .onClick(() => this.pushFile(file, others.map(m => m.id), 'high', ''))
+      );
+      for (const m of others) {
+        sub.addItem(i =>
+          i.setTitle(`Notify @${m.displayName}`)
+            .setIcon('bell')
+            .onClick(() => this.pushFile(file, [m.id], 'high', ''))
+        );
+      }
+      sub.addItem(i =>
+        i.setTitle('Notify with note…')
+          .setIcon('pencil')
+          .onClick(() => this.promptSendFile(file))
+      );
+
+      // ─── Assign as task (moves file into recipient's task inbox) ───
+      const cfg = this.settings.inboxTasks;
+      if (cfg.enabled && cfg.roots.length > 0) {
+        const lanes = this.taskScanner.getLanes();
+        const firstLane = lanes[0];
+        if (firstLane) {
+          sub.addSeparator();
+          for (const root of cfg.roots) {
+            for (const m of others) {
+              const title = cfg.roots.length > 1
+                ? `Assign → ${m.displayName} · ${root} › ${firstLane.label}`
+                : `Assign → ${m.displayName} › ${firstLane.label}`;
+              sub.addItem(i =>
+                i.setTitle(title)
+                  .setIcon('clipboard-check')
+                  .onClick(() => this.assignAsTask(file, m.id, root, firstLane.name))
+              );
+            }
+          }
+        }
+      }
+    });
+  }
+
+  private async assignAsTask(
+    file: TFile,
+    memberId: string,
+    root: string,
+    laneName: string
+  ): Promise<void> {
+    const member = this.memberRegistry.getMembers().find(m => m.id === memberId);
+    if (!member) return;
+    const cfg = this.settings.inboxTasks;
+    const personFolder = cfg.personFolderMap[memberId] || member.displayName;
+    const destFolder = `${root}/${personFolder}/${laneName}`;
+    try {
+      await this.ensureFolder(destFolder);
+      const destPath = `${destFolder}/${file.name}`;
+      if (destPath === file.path) {
+        new Notice('Already in that lane');
+        return;
+      }
+      await this.app.fileManager.renameFile(file, destPath);
+      const moved = this.app.vault.getAbstractFileByPath(destPath);
+      if (moved instanceof TFile) {
+        await this.pushFile(moved, [memberId], 'high', `Assigned to you in ${laneName}`);
+      }
+      new Notice(`Assigned to ${member.displayName} · ${laneName}`);
+    } catch (err) {
+      notifyError('Assign failed', err);
+    }
+  }
+
+  private async ensureFolder(path: string): Promise<void> {
+    const existing = this.app.vault.getAbstractFileByPath(path);
+    if (existing instanceof TFolder) return;
+    try {
+      await this.app.vault.createFolder(path);
+    } catch {
+      const again = this.app.vault.getAbstractFileByPath(path);
+      if (!(again instanceof TFolder)) throw new Error(`Cannot create folder: ${path}`);
+    }
   }
 
   private async promptSendFile(file: TFile): Promise<void> {
