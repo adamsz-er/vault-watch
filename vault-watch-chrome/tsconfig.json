@@ -4,7 +4,10 @@
     "module": "ESNext",
     "moduleResolution": "node",
     "strict": true,
-    "lib": ["DOM", "ES2020"],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2020"],
+    "types": ["chrome"],
     "outDir": "dist",
     "rootDir": "src"
   },

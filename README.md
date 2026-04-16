@@ -1,6 +1,17 @@
 # Vault Watch
 
+[![CI](https://github.com/adamsz-er/vault-watch/actions/workflows/ci.yml/badge.svg)](https://github.com/adamsz-er/vault-watch/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
 Notification and inbox system for shared Obsidian vaults synced via Relay. Get alerted to meaningful vault changes through Obsidian, Slack, and Chrome — with zero infrastructure and end-to-end encryption.
+
+> See [ARCHITECTURE.md](./ARCHITECTURE.md) for the design and threat model, and
+> [CONTRIBUTING.md](./CONTRIBUTING.md) to hack on it.
+
+## Screenshots
+
+> _Screenshots coming soon — the inbox sidebar, tasks view, and Slack/Chrome integrations._
+> Contributions welcome: drop PNGs in `docs/screenshots/` and link them here.
 
 ## Install (Obsidian Plugin)
 

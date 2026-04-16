@@ -73,7 +73,7 @@ export interface StoredKeys {
 
 export async function getStoredKeys(): Promise<StoredKeys | null> {
   const result = await chrome.storage.local.get(KEY_STORAGE);
-  return result[KEY_STORAGE] || null;
+  return (result[KEY_STORAGE] as StoredKeys | undefined) ?? null;
 }
 
 export async function storeKeys(keys: StoredKeys): Promise<void> {

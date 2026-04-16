@@ -1,15 +1,32 @@
 {
   "name": "vault-watch",
-  "version": "0.1.0",
-  "description": "Notification and inbox system for shared Obsidian vaults",
+  "version": "0.7.0",
+  "description": "Notification and inbox system for shared Obsidian vaults synced via Relay (E2E encrypted, zero-server).",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "typecheck": "tsc -noEmit -skipLibCheck"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "obsidian-relay",
+    "notifications",
+    "collaboration",
+    "end-to-end-encryption"
+  ],
+  "author": "adamsz-er",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adamsz-er/vault-watch.git",
+    "directory": "vault-watch-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/adamsz-er/vault-watch/issues"
+  },
+  "homepage": "https://github.com/adamsz-er/vault-watch#readme",
   "devDependencies": {
     "@types/node": "^20.11.0",
     "builtin-modules": "^3.3.0",
