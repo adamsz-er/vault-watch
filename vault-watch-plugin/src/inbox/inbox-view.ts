@@ -1,5 +1,5 @@
 import { ItemView, WorkspaceLeaf, setIcon, Menu } from 'obsidian';
-import type { InboxItem, InboxFilter, InboxTab, ActivitySubFilter, Member, InboxTask, InboxTaskLane } from '../types';
+import type { InboxItem, InboxFilter, InboxTab, ActivitySubFilter, Member, InboxTask, InboxTaskLane, InboxTasksSettings } from '../types';
 import { INBOX_VIEW_TYPE, REACTION_EMOJIS } from '../types';
 import type { InboxStore } from './inbox-store';
 import { InboxActions } from './actions';
@@ -28,7 +28,7 @@ export class InboxView extends ItemView {
   private refreshInterval: ReturnType<typeof setInterval> | null = null;
   private taskScanner: TaskScanner | null = null;
   private taskActions: TaskActions | null = null;
-  private getTasksSettings: (() => { enabled: boolean; roots: string[]; hideDone: boolean; viewMode: 'lanes' | 'list'; dismissedPaths: string[]; doneLane: string | null; perspective: 'mine' | 'everyone' }) | null = null;
+  private getTasksSettings: (() => InboxTasksSettings) | null = null;
   private saveSettings: (() => Promise<void>) | null = null;
 
   constructor(
@@ -46,7 +46,7 @@ export class InboxView extends ItemView {
   setTasksSource(
     scanner: TaskScanner,
     actions: TaskActions,
-    getSettings: () => { enabled: boolean; roots: string[]; hideDone: boolean; viewMode: 'lanes' | 'list'; dismissedPaths: string[]; doneLane: string | null; perspective: 'mine' | 'everyone' },
+    getSettings: () => InboxTasksSettings,
     saveSettings: () => Promise<void>
   ): void {
     // Detach previous listener if any
