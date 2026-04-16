@@ -4,12 +4,15 @@ import { MEMBERS_FILE, MEMBERS_DIR, KEYS_DIR, VAULT_WATCH_DIR, INBOX_DIR, OUTBOX
 import { serializePublicKeys, deserializePublicKeys } from '../crypto/keys';
 
 /**
- * Per-member file registry. Each member writes only their own file
- * (members/{id}.json), eliminating CRDT merge conflicts.
- * Falls back to legacy members.json and auto-migrates.
+ * Per-member file registry. Each member owns their own file
+ * (members/{id}.json), so CRDT sync never causes conflicts.
+ *
+ * Also reads legacy members.json as fallback until migration completes.
+ * Public keys are read from both Member files and legacy .pub files.
  */
 export class MemberRegistryManager {
   private members: Map<string, Member> = new Map();
+  private initialized = false;
 
   constructor(private vault: Vault) {}
 
@@ -21,81 +24,96 @@ export class MemberRegistryManager {
     return this.members.get(id);
   }
 
+  /**
+   * Call once when vault is ready (onLayoutReady), not during onload.
+   */
   async initialize(): Promise<void> {
-    await this.ensureDirectoryStructure();
-    await this.loadRegistry();
-    await this.migrateFromLegacy();
+    await this.ensureDirectories();
+    await this.loadAll();
+    await this.migrateLegacy();
+    this.initialized = true;
+    console.log(`[vault-watch] Registry ready: ${this.members.size} member(s)`);
   }
 
-  async loadRegistry(): Promise<void> {
-    this.members.clear();
-
-    // Scan per-member files in members/ directory
-    const folder = this.vault.getAbstractFileByPath(MEMBERS_DIR);
-    if (folder instanceof TFolder) {
-      for (const child of folder.children) {
-        if (child instanceof TFile && child.extension === 'json') {
-          try {
-            const content = await this.vault.read(child);
-            const member = JSON.parse(content) as Member;
-            if (member.id) {
-              this.members.set(member.id, member);
-            }
-          } catch {
-            console.warn(`[vault-watch] Could not parse member file: ${child.path}`);
-          }
-        }
-      }
-    }
+  /**
+   * Reload all members from disk. Safe to call anytime after initialize.
+   */
+  async reload(): Promise<void> {
+    await this.loadAll();
   }
 
   async registerMember(member: Member, pubKeys: PublicKeyBundle): Promise<void> {
-    // Re-read all members from disk to pick up CRDT-synced entries
-    await this.loadRegistry();
+    if (!this.initialized) await this.initialize();
 
-    // Write only this member's file (no conflict with other members)
+    // Reload to pick up any CRDT-synced members
+    await this.loadAll();
+
     this.members.set(member.id, member);
-    await this.saveMemberFile(member);
+    await this.writeMemberFile(member);
+    await this.writePublicKey(pubKeys);
+    await this.ensureInbox(member.id);
 
-    await this.publishPublicKeys(pubKeys);
-    await this.ensureMemberInbox(member.id);
+    // Migrate legacy if still present
+    await this.migrateLegacy();
   }
 
   async updateMember(id: string, updates: Partial<Member>): Promise<void> {
     const member = this.members.get(id);
     if (!member) throw new Error(`Member ${id} not found`);
-
     Object.assign(member, updates);
-    await this.saveMemberFile(member);
+    await this.writeMemberFile(member);
   }
 
+  /**
+   * Get public keys for a single member.
+   * Reads from member file first, falls back to legacy .pub file.
+   */
   async loadPublicKeys(memberId: string): Promise<PublicKeyBundle | null> {
-    const path = `${KEYS_DIR}/${memberId}.pub`;
-    const file = this.vault.getAbstractFileByPath(path);
-    if (file instanceof TFile) {
-      try {
-        const content = await this.vault.read(file);
-        return deserializePublicKeys(content);
-      } catch {
-        return null;
-      }
+    // Try member file first (canonical source)
+    const member = this.members.get(memberId);
+    if (member?.pubKeyEd25519 && member?.pubKeyX25519) {
+      return {
+        memberId,
+        ed25519: member.pubKeyEd25519,
+        x25519: member.pubKeyX25519,
+        publishedAt: member.joinedAt,
+      };
     }
-    return null;
+
+    // Fallback: legacy .pub file
+    return this.readPubFile(memberId);
   }
 
+  /**
+   * Get all public keys for all known members.
+   */
   async getAllPublicKeys(): Promise<Map<string, PublicKeyBundle>> {
     const keys = new Map<string, PublicKeyBundle>();
-    const folder = this.vault.getAbstractFileByPath(KEYS_DIR);
 
-    if (folder instanceof TFolder) {
-      for (const child of folder.children) {
+    // From member registry (canonical)
+    for (const [id, member] of this.members) {
+      if (member.pubKeyEd25519 && member.pubKeyX25519) {
+        keys.set(id, {
+          memberId: id,
+          ed25519: member.pubKeyEd25519,
+          x25519: member.pubKeyX25519,
+          publishedAt: member.joinedAt,
+        });
+      }
+    }
+
+    // Fill gaps from legacy .pub files
+    const keysDir = this.vault.getAbstractFileByPath(KEYS_DIR);
+    if (keysDir instanceof TFolder) {
+      for (const child of keysDir.children) {
         if (child instanceof TFile && child.extension === 'pub') {
-          try {
-            const content = await this.vault.read(child);
-            const bundle = deserializePublicKeys(content);
-            keys.set(bundle.memberId, bundle);
-          } catch {
-            // Skip corrupted key files
+          const id = child.basename;
+          if (!keys.has(id)) {
+            try {
+              const content = await this.vault.read(child);
+              const bundle = deserializePublicKeys(content);
+              keys.set(bundle.memberId, bundle);
+            } catch { /* skip corrupted */ }
           }
         }
       }
@@ -104,9 +122,43 @@ export class MemberRegistryManager {
     return keys;
   }
 
-  // ─── Private ───
+  // ─── Private: Loading ───
 
-  private async saveMemberFile(member: Member): Promise<void> {
+  private async loadAll(): Promise<void> {
+    this.members.clear();
+
+    // 1. Legacy members.json (baseline, overwritten by per-member files)
+    const legacyFile = this.vault.getAbstractFileByPath(MEMBERS_FILE);
+    if (legacyFile instanceof TFile) {
+      try {
+        const content = await this.vault.read(legacyFile);
+        const registry = JSON.parse(content) as MemberRegistry;
+        for (const m of registry.members ?? []) {
+          if (m.id) this.members.set(m.id, m);
+        }
+      } catch { /* ignore corrupt legacy */ }
+    }
+
+    // 2. Per-member files (authoritative, override legacy)
+    const membersDir = this.vault.getAbstractFileByPath(MEMBERS_DIR);
+    if (membersDir instanceof TFolder) {
+      for (const child of membersDir.children) {
+        if (child instanceof TFile && child.extension === 'json') {
+          try {
+            const content = await this.vault.read(child);
+            const member = JSON.parse(content) as Member;
+            if (member.id) this.members.set(member.id, member);
+          } catch {
+            console.warn(`[vault-watch] Bad member file: ${child.path}`);
+          }
+        }
+      }
+    }
+  }
+
+  // ─── Private: Writing ───
+
+  private async writeMemberFile(member: Member): Promise<void> {
     const path = `${MEMBERS_DIR}/${member.id}.json`;
     const content = JSON.stringify(member, null, 2);
     const file = this.vault.getAbstractFileByPath(path);
@@ -117,7 +169,7 @@ export class MemberRegistryManager {
     }
   }
 
-  private async publishPublicKeys(bundle: PublicKeyBundle): Promise<void> {
+  private async writePublicKey(bundle: PublicKeyBundle): Promise<void> {
     const path = `${KEYS_DIR}/${bundle.memberId}.pub`;
     const content = serializePublicKeys(bundle);
     const file = this.vault.getAbstractFileByPath(path);
@@ -128,61 +180,61 @@ export class MemberRegistryManager {
     }
   }
 
-  private async ensureMemberInbox(memberId: string): Promise<void> {
-    const inboxPath = `${INBOX_DIR}/${memberId}`;
-    const folder = this.vault.getAbstractFileByPath(inboxPath);
-    if (!folder) {
-      await this.vault.create(`${inboxPath}/.gitkeep`, '');
+  private async readPubFile(memberId: string): Promise<PublicKeyBundle | null> {
+    const path = `${KEYS_DIR}/${memberId}.pub`;
+    const file = this.vault.getAbstractFileByPath(path);
+    if (file instanceof TFile) {
+      try {
+        const content = await this.vault.read(file);
+        return deserializePublicKeys(content);
+      } catch { return null; }
     }
+    return null;
   }
 
-  /**
-   * Migrate from legacy single-file members.json to per-member files.
-   * Reads members.json, writes individual files, then deletes the legacy file.
-   */
-  private async migrateFromLegacy(): Promise<void> {
+  // ─── Private: Migration ───
+
+  private async migrateLegacy(): Promise<void> {
     const file = this.vault.getAbstractFileByPath(MEMBERS_FILE);
     if (!(file instanceof TFile)) return;
 
     try {
       const content = await this.vault.read(file);
       const legacy = JSON.parse(content) as MemberRegistry;
-
-      if (!legacy.members || legacy.members.length === 0) {
-        // Empty legacy file, just remove it
+      if (!legacy.members?.length) {
         await this.vault.delete(file);
         return;
       }
 
-      console.log(`[vault-watch] Migrating ${legacy.members.length} member(s) from members.json`);
-
       for (const member of legacy.members) {
-        // Only migrate if we don't already have a newer per-member file
-        if (!this.members.has(member.id)) {
+        const perMemberPath = `${MEMBERS_DIR}/${member.id}.json`;
+        if (!this.vault.getAbstractFileByPath(perMemberPath)) {
+          await this.writeMemberFile(member);
           this.members.set(member.id, member);
-          await this.saveMemberFile(member);
         }
       }
 
-      // Remove legacy file after successful migration
       await this.vault.delete(file);
-      console.log('[vault-watch] Migration complete, removed members.json');
+      console.log(`[vault-watch] Migrated ${legacy.members.length} member(s), removed members.json`);
     } catch (e) {
-      console.warn('[vault-watch] Legacy migration failed, will retry next load:', e);
+      console.warn('[vault-watch] Migration failed (will retry):', e);
     }
   }
 
-  private async ensureDirectoryStructure(): Promise<void> {
-    const dirs = [VAULT_WATCH_DIR, MEMBERS_DIR, KEYS_DIR, OUTBOX_DIR, INBOX_DIR];
+  // ─── Private: Setup ───
 
-    for (const dir of dirs) {
-      const folder = this.vault.getAbstractFileByPath(dir);
-      if (!folder) {
-        try {
-          await this.vault.create(`${dir}/.gitkeep`, '');
-        } catch {
-          // Directory may already exist from another create
-        }
+  private async ensureInbox(memberId: string): Promise<void> {
+    const path = `${INBOX_DIR}/${memberId}`;
+    if (!this.vault.getAbstractFileByPath(path)) {
+      await this.vault.create(`${path}/.gitkeep`, '');
+    }
+  }
+
+  private async ensureDirectories(): Promise<void> {
+    for (const dir of [VAULT_WATCH_DIR, MEMBERS_DIR, KEYS_DIR, OUTBOX_DIR, INBOX_DIR]) {
+      if (!this.vault.getAbstractFileByPath(dir)) {
+        try { await this.vault.create(`${dir}/.gitkeep`, ''); }
+        catch { /* already exists */ }
       }
     }
   }

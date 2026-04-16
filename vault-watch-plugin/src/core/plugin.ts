@@ -5,7 +5,6 @@ import { VaultWatchSettingTab } from './settings';
 import { IgnoreRules } from '../watcher/ignore-rules';
 import { VaultWatcher } from '../watcher/vault-watcher';
 import { Coalescer } from '../watcher/coalescer';
-import { DiffAnalyzer } from '../watcher/diff-analyzer';
 import { EventBuilder } from '../notifications/event-builder';
 import { Dispatcher } from '../notifications/dispatcher';
 import { NotificationSound } from '../notifications/sound';
@@ -25,7 +24,7 @@ export default class VaultWatchPlugin extends Plugin {
   private watcher!: VaultWatcher;
   private coalescer!: Coalescer;
   private eventBuilder!: EventBuilder;
-  private memberRegistry!: MemberRegistryManager;
+  memberRegistry!: MemberRegistryManager;
   private inboxStore!: InboxStore;
   private vaultRelay!: VaultRelay;
   private slackWebhook!: SlackWebhook;
@@ -38,9 +37,8 @@ export default class VaultWatchPlugin extends Plugin {
   async onload(): Promise<void> {
     await this.loadSettings();
 
-    // Initialize member registry
+    // Create registry (loaded later in onLayoutReady when vault is indexed)
     this.memberRegistry = new MemberRegistryManager(this.app.vault);
-    await this.memberRegistry.initialize();
 
     // Initialize sound
     this.sound = new NotificationSound(this.settings);
@@ -163,6 +161,18 @@ export default class VaultWatchPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: 'force-sync',
+      name: 'Force Sync',
+      callback: async () => {
+        await this.memberRegistry.reload();
+        await this.inboxStore.loadFromDisk();
+        const members = this.memberRegistry.getMembers().length;
+        const unread = this.inboxStore.getUnreadCount();
+        new Notice(`Vault Watch: ${members} member${members !== 1 ? 's' : ''}, ${unread} unread`);
+      },
+    });
+
+    this.addCommand({
       id: 'toggle-dnd',
       name: 'Toggle Do Not Disturb',
       callback: () => {
@@ -183,23 +193,24 @@ export default class VaultWatchPlugin extends Plugin {
         if (file instanceof TFile && file.path.endsWith('.md')) {
           menu.addItem((item) => {
             item
-              .setTitle('Push to Vault Watch')
-              .setIcon('message-square')
+              .setTitle('Send to Vault Watch')
+              .setIcon('send')
               .onClick(() => this.pushFile(file));
           });
         } else if (file instanceof TFolder) {
           menu.addItem((item) => {
             item
-              .setTitle('Push folder to Vault Watch')
-              .setIcon('message-square')
+              .setTitle('Send folder to Vault Watch')
+              .setIcon('send')
               .onClick(() => this.pushFolder(file));
           });
         }
       })
     );
 
-    // Start when layout is ready
+    // Start when vault is indexed and layout is ready
     this.app.workspace.onLayoutReady(async () => {
+      await this.memberRegistry.initialize();
       if (this.settings.setupComplete) {
         await this.startWatching();
       }
@@ -308,13 +319,16 @@ export default class VaultWatchPlugin extends Plugin {
 
   private watchForNewMembers(): void {
     const knownMembers = new Set(this.memberRegistry.getMembers().map(m => m.id));
-    const membersDir = 'Z_Meta/.vault-watch/members/';
+    const membersDir = 'Z_Meta/vault-watch/members/';
+    const legacyFile = 'Z_Meta/vault-watch/members.json';
 
-    // Watch for new/modified member files in members/ directory
     const handleMemberChange = async (file: TFile) => {
-      if (!file.path.startsWith(membersDir) || file.extension !== 'json') return;
+      // Watch both per-member files AND legacy members.json
+      const isPerMember = file.path.startsWith(membersDir) && file.extension === 'json';
+      const isLegacy = file.path === legacyFile;
+      if (!isPerMember && !isLegacy) return;
 
-      await this.memberRegistry.loadRegistry();
+      await this.memberRegistry.reload();
       const current = this.memberRegistry.getMembers();
 
       for (const member of current) {
@@ -337,8 +351,7 @@ export default class VaultWatchPlugin extends Plugin {
     const item = this.inboxStore.getItem(itemId);
     if (!item) return;
 
-    const members = this.memberRegistry.getMembers();
-    const recipients = [item.event.sender.id]; // React back to sender
+    const recipients = [item.event.sender.id];
 
     const event: NotificationEvent = {
       id: ulid(),

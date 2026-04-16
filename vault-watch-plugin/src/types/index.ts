@@ -158,7 +158,7 @@ export const DEFAULT_SETTINGS: VaultWatchSettings = {
   watchPath: '',
   ignorePaths: [
     '.obsidian/',
-    'Z_Meta/.vault-watch/',
+    'Z_Meta/vault-watch/',
     '.trash/',
     'templates/',
   ],
@@ -186,7 +186,7 @@ export interface PublicKeyBundle {
 
 // ─── Constants ───
 
-export const VAULT_WATCH_DIR = 'Z_Meta/.vault-watch';
+export const VAULT_WATCH_DIR = 'Z_Meta/vault-watch';
 export const MEMBERS_FILE = `${VAULT_WATCH_DIR}/members.json`; // Legacy, kept for migration
 export const MEMBERS_DIR = `${VAULT_WATCH_DIR}/members`;
 export const KEYS_DIR = `${VAULT_WATCH_DIR}/keys`;

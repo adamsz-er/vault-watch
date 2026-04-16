@@ -72,7 +72,12 @@ The Chrome extension reads encrypted payloads from Slack messages and shows noti
 - **Members tab** — see all registered members in the vault with initials, display name, and join date
 - **Status bar** — clickable unread count always visible at bottom of Obsidian, turns red when unread
 - **Keyboard shortcuts** — `Ctrl+Shift+N` open inbox, `Ctrl+Shift+J` next unread
-- **Inbox sidebar** — filterable inbox (All / Mentions / Changes) with unread badges
+- **Color-coded borders** — purple for mentions, green for creates, red for deletes, amber for shares, cyan for reactions, blue for edits
+- **Notification grouping** — consecutive edits to the same file by the same person stack into one expandable card
+- **Empty state** — muted bell icon with "All caught up" when inbox is clear
+- **Auto-refresh timestamps** — "2m ago" updates automatically every 30 seconds
+- **Smooth transitions** — hover and action transitions on cards and buttons
+- **Inbox sidebar** — filterable inbox (All / Mentions / Changes / Members) with unread badges
 - **Slack integration** — Block Kit messages with encrypted payload + "Open in Obsidian" deep link
 - **Chrome extension** — extracts encrypted payloads from Slack, desktop notifications, popup inbox
 
