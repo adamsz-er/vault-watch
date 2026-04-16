@@ -34,6 +34,13 @@ export class Coalescer {
       existing.latestContent = content;
       existing.changeCount++;
       clearTimeout(existing.sessionTimer);
+
+      // Check if this change is high-priority — flush immediately if so
+      if (this.isHighPriority(existing.firstContent, content)) {
+        this.closeSession(filePath);
+        return;
+      }
+
       existing.sessionTimer = setTimeout(
         () => this.closeSession(filePath),
         this.settings.sessionTimeoutMs
@@ -41,6 +48,18 @@ export class Coalescer {
     } else {
       // Start new session -- capture first snapshot for cumulative diff
       const firstContent = this.getLastKnownContent(filePath);
+
+      // For file creates or high-priority changes, flush immediately
+      if (eventType === 'file_created' || this.isHighPriority(firstContent, content)) {
+        // Skip session — dispatch right away
+        const analysis = this.diffAnalyzer.analyze(firstContent, content);
+        if (analysis.isSignificant) {
+          const event = this.eventBuilder.build(filePath, analysis, 1, eventType);
+          this.dispatchEvent(event);
+        }
+        return;
+      }
+
       this.fileSessions.set(filePath, {
         filePath,
         firstContent,
@@ -53,6 +72,16 @@ export class Coalescer {
         ),
       });
     }
+  }
+
+  /**
+   * Quick check if a change contains mentions or urgent tags.
+   * Used to bypass session coalescing for realtime delivery.
+   */
+  private isHighPriority(oldContent: string, newContent: string): boolean {
+    const analysis = this.diffAnalyzer.analyze(oldContent, newContent);
+    return analysis.mentionedMembers.length > 0 ||
+      analysis.addedTags.some(t => t === 'urgent' || t === 'priority');
   }
 
   onFileDeleted(filePath: string, lastContent: string): void {
