@@ -7,7 +7,8 @@ export type EventType =
   | 'file_renamed'
   | 'mention'
   | 'task_assigned'
-  | 'share';
+  | 'share'
+  | 'reaction';
 
 export type Priority = 'low' | 'normal' | 'high';
 
@@ -98,11 +99,13 @@ export interface MemberRegistry {
 export type InboxItemStatus = 'unread' | 'read' | 'archived' | 'starred';
 
 export interface InboxItem {
-  id: string;              // Same as event ID
+  id: string;
   event: NotificationEvent;
   status: InboxItemStatus;
   receivedAt: number;
   readAt?: number;
+  snoozedUntil?: number;
+  reactions?: { emoji: string; from: string; ts: number }[];
 }
 
 export type InboxFilter = 'all' | 'mentions' | 'changes';
@@ -132,15 +135,18 @@ export interface VaultWatchSettings {
   vaultName: string;
   slackWebhookUrl: string;
   slackEnabled: boolean;
-  watchPath: string;                // Root path to watch (default: '')
+  watchPath: string;
   ignorePaths: string[];
-  debounceMs: number;               // Layer 1 debounce (default: 2000)
-  sessionTimeoutMs: number;         // Layer 2 session window (default: 30000)
-  slackBatchMs: number;             // Layer 3 Slack batch window (default: 300000)
+  debounceMs: number;
+  sessionTimeoutMs: number;
+  slackBatchMs: number;
   minPriority: Priority;
-  privateKeyEd25519?: string;       // Base64, stored locally only
-  privateKeyX25519?: string;        // Base64, stored locally only
+  privateKeyEd25519?: string;
+  privateKeyX25519?: string;
   setupComplete: boolean;
+  soundEnabled: boolean;
+  soundVolume: number;              // 0-1
+  doNotDisturb: boolean;
 }
 
 export const DEFAULT_SETTINGS: VaultWatchSettings = {
@@ -161,7 +167,13 @@ export const DEFAULT_SETTINGS: VaultWatchSettings = {
   slackBatchMs: 300000,
   minPriority: 'normal',
   setupComplete: false,
+  soundEnabled: true,
+  soundVolume: 0.5,
+  doNotDisturb: false,
 };
+
+export type ReactionEmoji = '👍' | '✅' | '👀' | '❗';
+export const REACTION_EMOJIS: ReactionEmoji[] = ['👍', '✅', '👀', '❗'];
 
 // ─── Crypto Keys ───
 

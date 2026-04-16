@@ -1,12 +1,14 @@
 import { ItemView, WorkspaceLeaf } from 'obsidian';
-import type { InboxItem, InboxFilter } from '../types';
-import { INBOX_VIEW_TYPE } from '../types';
+import type { InboxItem, InboxFilter, ReactionEmoji } from '../types';
+import { INBOX_VIEW_TYPE, REACTION_EMOJIS } from '../types';
 import type { InboxStore } from './inbox-store';
 import { InboxActions } from './actions';
 
 export class InboxView extends ItemView {
   private currentFilter: InboxFilter = 'all';
+  private searchQuery = '';
   private changeHandler: () => void;
+  private onReact: ((itemId: string, emoji: string) => Promise<void>) | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -15,6 +17,10 @@ export class InboxView extends ItemView {
   ) {
     super(leaf);
     this.changeHandler = () => this.render();
+  }
+
+  setReactionHandler(handler: (itemId: string, emoji: string) => Promise<void>): void {
+    this.onReact = handler;
   }
 
   getViewType(): string {
@@ -39,6 +45,16 @@ export class InboxView extends ItemView {
     this.inboxStore.offChange(this.changeHandler);
   }
 
+  /** Navigate to next unread item */
+  focusNextUnread(): void {
+    const items = this.inboxStore.getItems(this.currentFilter);
+    const next = items.find(i => i.status === 'unread');
+    if (next) {
+      this.inboxActions.openFile(next);
+      this.inboxStore.markRead(next.id);
+    }
+  }
+
   private render(): void {
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
@@ -51,6 +67,19 @@ export class InboxView extends ItemView {
     if (badge > 0) {
       header.createEl('span', { text: `${badge}`, cls: 'vault-watch-badge' });
     }
+
+    // Search bar
+    const searchContainer = container.createDiv({ cls: 'vault-watch-search' });
+    const searchInput = searchContainer.createEl('input', {
+      type: 'text',
+      placeholder: 'Search notifications...',
+      cls: 'vault-watch-search-input',
+      value: this.searchQuery,
+    });
+    searchInput.addEventListener('input', (e) => {
+      this.searchQuery = (e.target as HTMLInputElement).value;
+      this.render();
+    });
 
     // Filter tabs
     const tabs = container.createDiv({ cls: 'vault-watch-tabs' });
@@ -66,12 +95,23 @@ export class InboxView extends ItemView {
     }
 
     // Items
-    const items = this.inboxStore.getItems(this.currentFilter);
+    let items = this.inboxStore.getItems(this.currentFilter);
+
+    // Apply search filter
+    if (this.searchQuery.trim()) {
+      const q = this.searchQuery.toLowerCase();
+      items = items.filter(i =>
+        i.event.fileTitle.toLowerCase().includes(q) ||
+        i.event.sender.name.toLowerCase().includes(q) ||
+        i.event.change.summary.toLowerCase().includes(q)
+      );
+    }
+
     const list = container.createDiv({ cls: 'vault-watch-list' });
 
     if (items.length === 0) {
       list.createEl('p', {
-        text: 'No notifications yet',
+        text: this.searchQuery ? 'No matching notifications' : 'No notifications yet',
         cls: 'vault-watch-empty',
       });
     } else {
@@ -81,11 +121,11 @@ export class InboxView extends ItemView {
     }
 
     // Footer
+    const footer = container.createDiv({ cls: 'vault-watch-footer' });
     if (items.some(i => i.status === 'unread')) {
-      const footer = container.createDiv({ cls: 'vault-watch-footer' });
       const markAllBtn = footer.createEl('button', {
         text: 'Mark All Read',
-        cls: 'vault-watch-mark-all',
+        cls: 'vault-watch-footer-btn',
       });
       markAllBtn.addEventListener('click', () => {
         this.inboxStore.markAllRead();
@@ -95,7 +135,7 @@ export class InboxView extends ItemView {
 
   private renderCard(parent: HTMLElement, item: InboxItem): void {
     const card = parent.createDiv({
-      cls: `vault-watch-card ${item.status === 'unread' ? 'unread' : ''}`,
+      cls: `vault-watch-card ${item.status === 'unread' ? 'unread' : ''} ${item.status === 'starred' ? 'starred' : ''}`,
     });
 
     // Header line: sender + time
@@ -124,7 +164,24 @@ export class InboxView extends ItemView {
       });
     }
 
-    // Actions
+    // Reactions display
+    if (item.reactions && item.reactions.length > 0) {
+      const reactionsEl = card.createDiv({ cls: 'vault-watch-reactions-display' });
+      const grouped = new Map<string, string[]>();
+      for (const r of item.reactions) {
+        const names = grouped.get(r.emoji) || [];
+        names.push(r.from);
+        grouped.set(r.emoji, names);
+      }
+      for (const [emoji, names] of grouped) {
+        reactionsEl.createEl('span', {
+          text: `${emoji} ${names.join(', ')}`,
+          cls: 'vault-watch-reaction-chip',
+        });
+      }
+    }
+
+    // Actions row
     const actions = card.createDiv({ cls: 'vault-watch-card-actions' });
 
     const openBtn = actions.createEl('button', {
@@ -149,37 +206,61 @@ export class InboxView extends ItemView {
       }
     });
 
-    if (item.status === 'unread') {
-      const readBtn = actions.createEl('button', {
-        text: 'Mark Read',
-        cls: 'vault-watch-btn vault-watch-btn-secondary',
+    // Reaction buttons
+    const reactRow = actions.createDiv({ cls: 'vault-watch-react-row' });
+    for (const emoji of REACTION_EMOJIS) {
+      const btn = reactRow.createEl('button', {
+        text: emoji,
+        cls: 'vault-watch-react-btn',
       });
-      readBtn.addEventListener('click', () => {
-        this.inboxStore.markRead(item.id);
+      btn.addEventListener('click', async () => {
+        if (this.onReact) {
+          await this.onReact(item.id, emoji);
+        }
       });
     }
 
-    const archiveBtn = actions.createEl('button', {
+    // Secondary actions
+    const secondary = card.createDiv({ cls: 'vault-watch-card-secondary' });
+
+    if (item.status === 'unread') {
+      const readBtn = secondary.createEl('button', {
+        text: 'Mark Read',
+        cls: 'vault-watch-btn-link',
+      });
+      readBtn.addEventListener('click', () => this.inboxStore.markRead(item.id));
+    }
+
+    const snoozeBtn = secondary.createEl('button', {
+      text: 'Snooze 1h',
+      cls: 'vault-watch-btn-link',
+    });
+    snoozeBtn.addEventListener('click', () => {
+      this.inboxStore.snooze(item.id, 60 * 60 * 1000);
+    });
+
+    const archiveBtn = secondary.createEl('button', {
       text: 'Archive',
-      cls: 'vault-watch-btn vault-watch-btn-secondary',
+      cls: 'vault-watch-btn-link',
     });
-    archiveBtn.addEventListener('click', () => {
-      this.inboxStore.archive(item.id);
+    archiveBtn.addEventListener('click', () => this.inboxStore.archive(item.id));
+
+    const starBtn = secondary.createEl('button', {
+      text: item.status === 'starred' ? 'Unstar' : 'Star',
+      cls: 'vault-watch-btn-link',
     });
+    starBtn.addEventListener('click', () => this.inboxStore.star(item.id));
   }
 
   private formatAction(item: InboxItem): string {
     switch (item.event.type) {
-      case 'file_created':
-        return `Created "${item.event.fileTitle}"`;
-      case 'file_deleted':
-        return `Deleted "${item.event.fileTitle}"`;
-      case 'file_renamed':
-        return `Renamed "${item.event.fileTitle}"`;
-      case 'mention':
-        return `Mentioned you in "${item.event.fileTitle}"`;
-      default:
-        return `Edited "${item.event.fileTitle}"`;
+      case 'file_created': return `Created "${item.event.fileTitle}"`;
+      case 'file_deleted': return `Deleted "${item.event.fileTitle}"`;
+      case 'file_renamed': return `Renamed "${item.event.fileTitle}"`;
+      case 'mention': return `Mentioned you in "${item.event.fileTitle}"`;
+      case 'share': return `Shared "${item.event.fileTitle}"`;
+      case 'reaction': return `Reacted to "${item.event.fileTitle}"`;
+      default: return `Edited "${item.event.fileTitle}"`;
     }
   }
 

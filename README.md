@@ -64,6 +64,13 @@ The Chrome extension reads encrypted payloads from Slack messages and shows noti
 - **Reply from inbox** — click Reply on any notification to open the file with `@sender` pre-inserted
 - **Unread badge** — red badge with count on the ribbon icon, icon turns red when unread
 - **New member alerts** — toast notification when a new team member joins Vault Watch
+- **Quick reactions** — react with emoji (thumbs up, checkmark, eyes, alert) from inbox cards, sender gets notified
+- **Notification sound** — audio ping for incoming notifications (two-tone for high priority), configurable volume
+- **Do Not Disturb** — toggle via command palette or settings to suppress all toasts and sounds
+- **Snooze** — "Snooze 1h" on any inbox card, notification reappears after the timer
+- **Search inbox** — filter notifications by sender, file name, or content
+- **Status bar** — clickable unread count always visible at bottom of Obsidian, turns red when unread
+- **Keyboard shortcuts** — `Ctrl+Shift+N` open inbox, `Ctrl+Shift+J` next unread
 - **Inbox sidebar** — filterable inbox (All / Mentions / Changes) with unread badges
 - **Slack integration** — Block Kit messages with encrypted payload + "Open in Obsidian" deep link
 - **Chrome extension** — extracts encrypted payloads from Slack, desktop notifications, popup inbox

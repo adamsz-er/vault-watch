@@ -7,23 +7,31 @@ import type {
   VaultWatchSettings,
 } from '../types';
 import { INBOX_DIR } from '../types';
+import type { NotificationSound } from '../notifications/sound';
 
 export class InboxStore {
   private items: InboxItem[] = [];
   private onChangeCallbacks: (() => void)[] = [];
+  private sound: NotificationSound | null = null;
 
   constructor(
     private vault: Vault,
     private settings: VaultWatchSettings
   ) {}
 
+  setSound(sound: NotificationSound): void {
+    this.sound = sound;
+  }
+
   getItems(filter: InboxFilter = 'all'): InboxItem[] {
+    const now = Date.now();
     let filtered = this.items;
 
     switch (filter) {
       case 'mentions':
         filtered = this.items.filter(
-          i => i.event.type === 'mention' || i.event.mentionedMembers.includes(this.settings.memberId)
+          i => i.event.type === 'mention' || i.event.type === 'reaction' ||
+               i.event.mentionedMembers.includes(this.settings.memberId)
         );
         break;
       case 'changes':
@@ -33,19 +41,46 @@ export class InboxStore {
         break;
     }
 
-    // Sort by receivedAt descending (newest first)
     return filtered
       .filter(i => i.status !== 'archived')
+      .filter(i => !i.snoozedUntil || i.snoozedUntil <= now) // hide snoozed
       .sort((a, b) => b.receivedAt - a.receivedAt);
   }
 
   getUnreadCount(): number {
-    return this.items.filter(i => i.status === 'unread').length;
+    const now = Date.now();
+    return this.items.filter(
+      i => i.status === 'unread' && (!i.snoozedUntil || i.snoozedUntil <= now)
+    ).length;
+  }
+
+  getItem(id: string): InboxItem | undefined {
+    return this.items.find(i => i.id === id);
   }
 
   async addItem(event: NotificationEvent): Promise<void> {
-    // Dedup by event ID
     if (this.items.some(i => i.id === event.id)) return;
+
+    // Handle reaction events — attach to existing item
+    if (event.type === 'reaction' && event.change.addedExcerpt) {
+      const targetId = event.change.addedExcerpt; // We store target event ID here
+      const target = this.items.find(i => i.id === targetId);
+      if (target) {
+        if (!target.reactions) target.reactions = [];
+        target.reactions.push({
+          emoji: event.change.summary,
+          from: event.sender.name,
+          ts: event.ts,
+        });
+        await this.persistItem(target);
+        if (!this.settings.doNotDisturb) {
+          new Notice(`${event.sender.name} reacted ${event.change.summary} to "${target.event.fileTitle}"`);
+          this.sound?.play('normal');
+        }
+        this.notifyChange();
+        return;
+      }
+    }
 
     const item: InboxItem = {
       id: event.id,
@@ -56,7 +91,12 @@ export class InboxStore {
 
     this.items.push(item);
     await this.persistItem(item);
-    this.showToast(event);
+
+    if (!this.settings.doNotDisturb) {
+      this.showToast(event);
+      this.sound?.play(event.priority);
+    }
+
     this.notifyChange();
   }
 
@@ -96,6 +136,16 @@ export class InboxStore {
     const item = this.items.find(i => i.id === id);
     if (item) {
       item.status = item.status === 'starred' ? 'read' : 'starred';
+      await this.persistItem(item);
+      this.notifyChange();
+    }
+  }
+
+  async snooze(id: string, durationMs: number): Promise<void> {
+    const item = this.items.find(i => i.id === id);
+    if (item) {
+      item.snoozedUntil = Date.now() + durationMs;
+      item.status = 'read';
       await this.persistItem(item);
       this.notifyChange();
     }
@@ -147,6 +197,7 @@ export class InboxStore {
       : event.type === 'file_deleted' ? 'deleted'
       : event.type === 'file_renamed' ? 'renamed'
       : event.type === 'mention' ? 'mentioned you in'
+      : event.type === 'share' ? 'shared'
       : 'edited';
 
     const msg = `${event.sender.name} ${verb} "${event.fileTitle}"`;

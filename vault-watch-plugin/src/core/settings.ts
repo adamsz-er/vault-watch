@@ -111,6 +111,47 @@ export class VaultWatchSettingTab extends PluginSettingTab {
           })
       );
 
+    // ── Sound & DND ──
+    containerEl.createEl('h3', { text: 'Notifications' });
+
+    new Setting(containerEl)
+      .setName('Notification sound')
+      .setDesc('Play a ping sound for incoming notifications')
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.soundEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.soundEnabled = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Sound volume')
+      .setDesc('0 (silent) to 100 (loud)')
+      .addSlider(slider =>
+        slider
+          .setLimits(0, 100, 5)
+          .setValue(this.plugin.settings.soundVolume * 100)
+          .setDynamicTooltip()
+          .onChange(async (value) => {
+            this.plugin.settings.soundVolume = value / 100;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Do Not Disturb')
+      .setDesc('Suppress all toasts and sounds. Toggle via command palette: "Toggle Do Not Disturb"')
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.doNotDisturb)
+          .onChange(async (value) => {
+            this.plugin.settings.doNotDisturb = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
     // ── Timing ──
     containerEl.createEl('h3', { text: 'Notification Timing' });
 

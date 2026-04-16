@@ -8,6 +8,7 @@ import { Coalescer } from '../watcher/coalescer';
 import { DiffAnalyzer } from '../watcher/diff-analyzer';
 import { EventBuilder } from '../notifications/event-builder';
 import { Dispatcher } from '../notifications/dispatcher';
+import { NotificationSound } from '../notifications/sound';
 import { MemberRegistryManager } from '../members/registry';
 import { MentionSuggest } from '../members/mention-suggest';
 import { InboxStore } from '../inbox/inbox-store';
@@ -16,6 +17,7 @@ import { InboxActions } from '../inbox/actions';
 import { VaultRelay } from '../relay/vault-relay';
 import { SlackWebhook } from '../relay/slack-webhook';
 import { generateKeySet, createPublicKeyBundle } from '../crypto/keys';
+import { ulid } from 'ulid';
 
 export default class VaultWatchPlugin extends Plugin {
   settings: VaultWatchSettings = DEFAULT_SETTINGS;
@@ -28,8 +30,10 @@ export default class VaultWatchPlugin extends Plugin {
   private vaultRelay!: VaultRelay;
   private slackWebhook!: SlackWebhook;
   private dispatcher!: Dispatcher;
+  private sound!: NotificationSound;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
   private ribbonIconEl: HTMLElement | null = null;
+  private statusBarEl: HTMLElement | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -38,8 +42,12 @@ export default class VaultWatchPlugin extends Plugin {
     this.memberRegistry = new MemberRegistryManager(this.app.vault);
     await this.memberRegistry.initialize();
 
+    // Initialize sound
+    this.sound = new NotificationSound(this.settings);
+
     // Initialize inbox
     this.inboxStore = new InboxStore(this.app.vault, this.settings);
+    this.inboxStore.setSound(this.sound);
 
     // Initialize relays
     this.slackWebhook = new SlackWebhook(this.settings, this.memberRegistry);
@@ -81,7 +89,9 @@ export default class VaultWatchPlugin extends Plugin {
     // Register inbox view
     this.registerView(INBOX_VIEW_TYPE, (leaf) => {
       const actions = new InboxActions(this.app);
-      return new InboxView(leaf, this.inboxStore, actions);
+      const view = new InboxView(leaf, this.inboxStore, actions);
+      view.setReactionHandler((itemId, emoji) => this.sendReaction(itemId, emoji));
+      return view;
     });
 
     // Register mention suggest
@@ -92,19 +102,29 @@ export default class VaultWatchPlugin extends Plugin {
     // Add settings tab
     this.addSettingTab(new VaultWatchSettingTab(this.app, this));
 
-    // Add ribbon icon with unread badge
+    // Ribbon icon with unread badge
     this.ribbonIconEl = this.addRibbonIcon('bell', 'Vault Watch Inbox', () => {
       this.activateView();
     });
     this.ribbonIconEl.addClass('vault-watch-ribbon');
 
-    // Update badge when inbox changes
-    this.inboxStore.onChange(() => this.updateRibbonBadge());
+    // Status bar
+    this.statusBarEl = this.addStatusBarItem();
+    this.statusBarEl.addClass('vault-watch-status-bar');
+    this.statusBarEl.addEventListener('click', () => this.activateView());
 
-    // Add commands
+    // Update badge + status bar when inbox changes
+    this.inboxStore.onChange(() => {
+      this.updateRibbonBadge();
+      this.updateStatusBar();
+    });
+
+    // ─── Commands ───
+
     this.addCommand({
       id: 'open-inbox',
       name: 'Open Inbox',
+      hotkeys: [{ modifiers: ['Ctrl', 'Shift'], key: 'n' }],
       callback: () => this.activateView(),
     });
 
@@ -112,6 +132,18 @@ export default class VaultWatchPlugin extends Plugin {
       id: 'mark-all-read',
       name: 'Mark All Read',
       callback: () => this.inboxStore.markAllRead(),
+    });
+
+    this.addCommand({
+      id: 'next-unread',
+      name: 'Go to Next Unread',
+      hotkeys: [{ modifiers: ['Ctrl', 'Shift'], key: 'j' }],
+      callback: () => {
+        const views = this.app.workspace.getLeavesOfType(INBOX_VIEW_TYPE);
+        if (views.length > 0) {
+          (views[0].view as InboxView).focusNextUnread();
+        }
+      },
     });
 
     this.addCommand({
@@ -125,7 +157,22 @@ export default class VaultWatchPlugin extends Plugin {
       },
     });
 
-    // Right-click context menu: "Push to Vault Watch" (files + folders)
+    this.addCommand({
+      id: 'toggle-dnd',
+      name: 'Toggle Do Not Disturb',
+      callback: () => {
+        this.settings.doNotDisturb = !this.settings.doNotDisturb;
+        this.saveSettings();
+        this.updateStatusBar();
+        new Notice(
+          this.settings.doNotDisturb
+            ? 'Do Not Disturb: ON'
+            : 'Do Not Disturb: OFF'
+        );
+      },
+    });
+
+    // Right-click context menu
     this.registerEvent(
       this.app.workspace.on('file-menu', (menu: Menu, file) => {
         if (file instanceof TFile && file.path.endsWith('.md')) {
@@ -155,18 +202,11 @@ export default class VaultWatchPlugin extends Plugin {
   }
 
   async onunload(): Promise<void> {
-    if (this.watcher) {
-      this.watcher.stop();
-    }
-    if (this.coalescer) {
-      await this.coalescer.flushAll();
-    }
-    if (this.vaultRelay) {
-      this.vaultRelay.stopWatching();
-    }
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-    }
+    if (this.watcher) this.watcher.stop();
+    if (this.coalescer) await this.coalescer.flushAll();
+    if (this.vaultRelay) this.vaultRelay.stopWatching();
+    if (this.cleanupInterval) clearInterval(this.cleanupInterval);
+    if (this.sound) this.sound.destroy();
   }
 
   async loadSettings(): Promise<void> {
@@ -177,25 +217,19 @@ export default class VaultWatchPlugin extends Plugin {
     await this.saveData(this.settings);
   }
 
-  /**
-   * First-time setup: generate keys, register member.
-   */
   async runSetup(): Promise<void> {
     const keys = generateKeySet();
 
-    // Store private keys locally (never synced)
     this.settings.privateKeyEd25519 = keys.ed25519.secretKey;
     this.settings.privateKeyX25519 = keys.x25519.secretKey;
     this.settings.setupComplete = true;
 
-    // Auto-detect vault name if not set
     if (!this.settings.vaultName) {
       this.settings.vaultName = this.app.vault.getName();
     }
 
     await this.saveSettings();
 
-    // Register member in shared registry
     const member: Member = {
       id: this.settings.memberId,
       displayName: this.settings.displayName,
@@ -212,21 +246,21 @@ export default class VaultWatchPlugin extends Plugin {
     const pubBundle = createPublicKeyBundle(this.settings.memberId, keys);
     await this.memberRegistry.registerMember(member, pubBundle);
 
-    // Start watching
     await this.startWatching();
   }
+
+  // ─── Private ───
 
   private updateRibbonBadge(): void {
     if (!this.ribbonIconEl) return;
     const count = this.inboxStore.getUnreadCount();
 
-    // Remove existing badge
     const existing = this.ribbonIconEl.querySelector('.vault-watch-ribbon-badge');
     if (existing) existing.remove();
 
     if (count > 0) {
       this.ribbonIconEl.addClass('has-unread');
-      const badge = this.ribbonIconEl.createEl('span', {
+      this.ribbonIconEl.createEl('span', {
         text: count > 99 ? '99+' : String(count),
         cls: 'vault-watch-ribbon-badge',
       });
@@ -235,24 +269,30 @@ export default class VaultWatchPlugin extends Plugin {
     }
   }
 
-  private async startWatching(): Promise<void> {
-    // Snapshot existing files for diff baseline
-    await this.watcher.snapshotAll();
+  private updateStatusBar(): void {
+    if (!this.statusBarEl) return;
+    const count = this.inboxStore.getUnreadCount();
+    const dnd = this.settings.doNotDisturb ? ' (DND)' : '';
 
-    // Load inbox from disk
+    if (count > 0) {
+      this.statusBarEl.setText(`Vault Watch: ${count} unread${dnd}`);
+      this.statusBarEl.addClass('has-unread');
+    } else {
+      this.statusBarEl.setText(`Vault Watch${dnd}`);
+      this.statusBarEl.removeClass('has-unread');
+    }
+  }
+
+  private async startWatching(): Promise<void> {
+    await this.watcher.snapshotAll();
     await this.inboxStore.loadFromDisk();
     this.updateRibbonBadge();
+    this.updateStatusBar();
 
-    // Start file watcher
     this.watcher.start();
-
-    // Start outbox watcher (for incoming notifications)
     this.vaultRelay.startWatching();
-
-    // Watch for new members joining (members.json changes)
     this.watchForNewMembers();
 
-    // Periodic outbox cleanup (every hour)
     this.cleanupInterval = setInterval(
       () => this.vaultRelay.cleanupOutbox(),
       60 * 60 * 1000
@@ -274,15 +314,45 @@ export default class VaultWatchPlugin extends Plugin {
 
         for (const member of current) {
           if (!knownMembers.has(member.id) && member.id !== this.settings.memberId) {
-            new Notice(
-              `${member.displayName} joined Vault Watch!`,
-              8000
-            );
+            new Notice(`${member.displayName} joined Vault Watch!`, 8000);
             knownMembers.add(member.id);
           }
         }
       })
     );
+  }
+
+  private async sendReaction(itemId: string, emoji: string): Promise<void> {
+    const item = this.inboxStore.getItem(itemId);
+    if (!item) return;
+
+    const members = this.memberRegistry.getMembers();
+    const recipients = [item.event.sender.id]; // React back to sender
+
+    const event: NotificationEvent = {
+      id: ulid(),
+      v: 1,
+      type: 'reaction',
+      ts: Date.now(),
+      sender: { id: this.settings.memberId, name: this.settings.displayName },
+      vault: this.settings.vaultName,
+      filePath: item.event.filePath,
+      fileTitle: item.event.fileTitle,
+      change: {
+        changeType: 'content_added',
+        summary: emoji,
+        affectedHeadings: [],
+        charDelta: 0,
+        addedExcerpt: itemId, // Store target event ID
+        coalescedCount: 1,
+      },
+      recipients,
+      mentionedMembers: [],
+      priority: 'normal',
+    };
+
+    await this.dispatcher.dispatchToVault(event);
+    new Notice(`Reacted ${emoji}`);
   }
 
   private async pushFile(file: TFile): Promise<void> {
@@ -303,7 +373,7 @@ export default class VaultWatchPlugin extends Plugin {
 
       const fileTitle = file.basename;
       const event: NotificationEvent = {
-        id: (await import('ulid')).ulid(),
+        id: ulid(),
         v: 1,
         type: 'share',
         ts: Date.now(),

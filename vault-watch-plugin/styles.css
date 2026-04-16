@@ -27,6 +27,27 @@
   font-weight: 600;
 }
 
+/* ─── Search ─── */
+
+.vault-watch-search {
+  margin-bottom: 6px;
+}
+
+.vault-watch-search-input {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 12px;
+}
+
+.vault-watch-search-input:focus {
+  border-color: var(--interactive-accent);
+  outline: none;
+}
+
 /* ─── Tabs ─── */
 
 .vault-watch-tabs {
@@ -77,6 +98,10 @@
   background: var(--background-primary);
 }
 
+.vault-watch-card.starred {
+  border-left: 3px solid #f59e0b;
+}
+
 .vault-watch-card-header {
   display: flex;
   justify-content: space-between;
@@ -115,10 +140,14 @@
   margin-bottom: 4px;
 }
 
+/* ─── Card Actions ─── */
+
 .vault-watch-card-actions {
   display: flex;
   gap: 4px;
+  align-items: center;
   margin-top: 4px;
+  flex-wrap: wrap;
 }
 
 .vault-watch-btn {
@@ -131,13 +160,73 @@
   color: var(--text-on-accent);
 }
 
-.vault-watch-btn-secondary {
+.vault-watch-btn:hover {
+  opacity: 0.85;
+}
+
+/* ─── Reactions ─── */
+
+.vault-watch-react-row {
+  display: flex;
+  gap: 2px;
+  margin-left: 4px;
+}
+
+.vault-watch-react-btn {
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid var(--background-modifier-border);
   background: transparent;
+  line-height: 1;
+}
+
+.vault-watch-react-btn:hover {
+  background: var(--background-modifier-hover);
+  transform: scale(1.2);
+}
+
+.vault-watch-reactions-display {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: 4px 0;
+}
+
+.vault-watch-reaction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--background-modifier-hover);
+  font-size: 11px;
   color: var(--text-muted);
 }
 
-.vault-watch-btn:hover {
-  opacity: 0.85;
+/* ─── Secondary Actions ─── */
+
+.vault-watch-card-secondary {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.vault-watch-btn-link {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.vault-watch-btn-link:hover {
+  color: var(--text-normal);
 }
 
 /* ─── Footer ─── */
@@ -149,7 +238,7 @@
   text-align: center;
 }
 
-.vault-watch-mark-all {
+.vault-watch-footer-btn {
   padding: 4px 12px;
   border-radius: 4px;
   font-size: 12px;
@@ -159,7 +248,7 @@
   color: var(--text-muted);
 }
 
-.vault-watch-mark-all:hover {
+.vault-watch-footer-btn:hover {
   background: var(--background-modifier-hover);
 }
 
@@ -207,6 +296,18 @@
 
 .vault-watch-ribbon.has-unread .svg-icon {
   color: #ef4444;
+}
+
+/* ─── Status Bar ─── */
+
+.vault-watch-status-bar {
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.vault-watch-status-bar.has-unread {
+  color: #ef4444;
+  font-weight: 600;
 }
 
 /* ─── Settings ─── */
