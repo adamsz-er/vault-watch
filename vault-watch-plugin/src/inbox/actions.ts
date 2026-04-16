@@ -1,5 +1,6 @@
 import { App, MarkdownView, TFile } from 'obsidian';
 import type { InboxItem } from '../types';
+import { EDITOR_READY_MS } from '../core/constants';
 
 /**
  * Inbox item actions -- navigate to file, mark read, etc.
@@ -33,7 +34,7 @@ export class InboxActions {
     await this.app.workspace.openLinkText(item.event.filePath, '', false);
 
     // Wait for editor to be ready
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, EDITOR_READY_MS));
 
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!view) return;

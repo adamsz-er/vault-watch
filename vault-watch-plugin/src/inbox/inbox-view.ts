@@ -6,6 +6,7 @@ import { InboxActions } from './actions';
 import type { TaskScanner } from './task-scanner';
 import type { TaskActions } from './task-actions';
 import { getEventVerb } from '../utils/event-verbs';
+import { INBOX_TIMESTAMP_REFRESH_MS } from '../core/constants';
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * 60 * 60 * 1000;
@@ -85,7 +86,7 @@ export class InboxView extends ItemView {
   async onOpen(): Promise<void> {
     this.inboxStore.onChange(this.changeHandler);
     this.render();
-    this.refreshInterval = setInterval(() => this.render(), 30_000);
+    this.refreshInterval = setInterval(() => this.render(), INBOX_TIMESTAMP_REFRESH_MS);
   }
 
   async onClose(): Promise<void> {
