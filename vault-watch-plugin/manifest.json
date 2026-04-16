@@ -1,7 +1,7 @@
 {
   "id": "vault-watch",
   "name": "Vault Watch",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "minAppVersion": "1.5.0",
   "description": "Notification and inbox system for shared Obsidian vaults synced via Relay",
   "author": "Adam & Angelo",
