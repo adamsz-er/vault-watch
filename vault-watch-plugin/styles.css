@@ -1,0 +1,190 @@
+/* ─── Inbox View ─── */
+
+.vault-watch-inbox {
+  padding: 8px;
+}
+
+.vault-watch-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 8px;
+}
+
+.vault-watch-header h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.vault-watch-badge {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ─── Tabs ─── */
+
+.vault-watch-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.vault-watch-tab {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: center;
+}
+
+.vault-watch-tab.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.vault-watch-tab:hover:not(.active) {
+  background: var(--background-modifier-hover);
+}
+
+/* ─── Cards ─── */
+
+.vault-watch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vault-watch-card {
+  padding: 8px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-secondary);
+}
+
+.vault-watch-card.unread {
+  border-left: 3px solid var(--interactive-accent);
+  background: var(--background-primary);
+}
+
+.vault-watch-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.vault-watch-card-header strong {
+  font-size: 13px;
+}
+
+.vault-watch-time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.vault-watch-card-action {
+  font-size: 12px;
+  color: var(--text-normal);
+  margin-bottom: 2px;
+}
+
+.vault-watch-card-summary {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.vault-watch-mention-badge {
+  display: inline-block;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+
+.vault-watch-card-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.vault-watch-btn {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.vault-watch-btn-secondary {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.vault-watch-btn:hover {
+  opacity: 0.85;
+}
+
+/* ─── Footer ─── */
+
+.vault-watch-footer {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+  text-align: center;
+}
+
+.vault-watch-mark-all {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.vault-watch-mark-all:hover {
+  background: var(--background-modifier-hover);
+}
+
+.vault-watch-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 20px 0;
+}
+
+/* ─── Mention Suggest ─── */
+
+.vault-watch-mention-id {
+  font-weight: 600;
+  color: var(--interactive-accent);
+}
+
+.vault-watch-mention-name {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* ─── Settings ─── */
+
+.vault-watch-setup-status {
+  color: var(--text-success);
+  font-style: italic;
+}

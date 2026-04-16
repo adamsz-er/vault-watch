@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"name": "vault-watch-plugin",
+			"path": "vault-watch-plugin"
+		},
+		{
+			"name": "vault-watch-chrome",
+			"path": "vault-watch-chrome"
+		}
+	],
+	"settings": {
+		"typescript.tsdk": "vault-watch-plugin/node_modules/typescript/lib"
+	}
+}
