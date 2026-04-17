@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vault Watch — toast notification mockup</title>
+<link rel="stylesheet" href="_obsidian-theme.css">
+<style>
+  body {
+    padding: 0;
+    background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%);
+    min-height: 240px;
+    position: relative;
+  }
+  /* Mock the obsidian editor area underneath so the toast has context */
+  .editor-bg {
+    position: absolute;
+    inset: 0;
+    background: var(--background-primary);
+    opacity: 0.6;
+    background-image:
+      linear-gradient(180deg, transparent 0%, transparent 24px, rgba(255,255,255,0.04) 24px, rgba(255,255,255,0.04) 25px, transparent 25px),
+      linear-gradient(180deg, transparent 0%, transparent 56px, rgba(255,255,255,0.04) 56px, rgba(255,255,255,0.04) 57px, transparent 57px);
+  }
+  .toast-container {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  .notice {
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-left: 3px solid var(--interactive-accent);
+    border-radius: 6px;
+    padding: 12px 16px;
+    color: var(--text-normal);
+    font-size: 13px;
+    line-height: 1.4;
+    max-width: 340px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    font-family: var(--font-interface);
+  }
+  .notice .line1 { font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .notice .pill { background: var(--interactive-accent); color: white; border-radius: 3px; padding: 1px 5px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  .notice .line2 { color: var(--text-muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="editor-bg"></div>
+<div class="toast-container">
+  <div class="notice">
+    <div class="line1">Alice mentioned you in "Q2 Roadmap.md" <span class="pill">@you</span></div>
+    <div class="line2">"… need your input on the launch sequence before Friday."</div>
+  </div>
+</div>
+</body>
+</html>

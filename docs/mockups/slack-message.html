@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vault Watch — Slack message mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #1a1d21;
+    font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #d1d2d3;
+  }
+  body { padding: 24px; }
+  .frame {
+    width: 760px;
+    background: #1a1d21;
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .msg-row {
+    display: flex;
+    gap: 12px;
+    padding: 6px 8px;
+    border-radius: 6px;
+  }
+  .msg-row:hover { background: #222529; }
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #7c3aed, #5b21b6);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .msg-body { flex: 1; min-width: 0; }
+  .msg-head {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    margin-bottom: 2px;
+  }
+  .msg-author { font-weight: 900; color: #d1d2d3; font-size: 15px; }
+  .app-tag {
+    background: #36373a;
+    color: #abacad;
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .msg-time { color: #abacad; font-size: 12px; }
+  .msg-text { color: #d1d2d3; font-size: 15px; line-height: 1.46; }
+  .msg-text strong { font-weight: 700; color: #e8e8e8; }
+  .msg-text code, .file-name { color: #d8a657; font-family: Monaco, Menlo, monospace; font-size: 13px; }
+  .quote-block {
+    border-left: 4px solid #54585e;
+    padding: 4px 12px;
+    margin-top: 6px;
+    color: #abacad;
+    font-size: 14px;
+  }
+  .ctx-block {
+    margin-top: 8px;
+    color: #6f7177;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .ctx-block code { font-family: Monaco, Menlo, monospace; font-size: 11px; color: #6f7177; }
+  .open-btn {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 6px 12px;
+    background: #007a5a;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .open-btn:hover { background: #148567; }
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <div class="msg-row">
+    <div class="avatar">VW</div>
+    <div class="msg-body">
+      <div class="msg-head">
+        <span class="msg-author">Vault Watch</span>
+        <span class="app-tag">App</span>
+        <span class="msg-time">10:42 AM</span>
+      </div>
+      <div class="msg-text">
+        <strong>Alice</strong> mentioned you in "<span class="file-name">Q2 Roadmap.md</span>"
+      </div>
+      <div class="quote-block">
+        Need your input on the launch sequence before Friday — see the new section under Risks.
+      </div>
+      <a class="open-btn" href="#">Open in Obsidian</a>
+      <div class="ctx-block">
+        🔒 <code>vault-watch:v1:eyJ2IjoxLCJpZCI6IjAxSEpaIiwidHMiOjE3MzYy…</code>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

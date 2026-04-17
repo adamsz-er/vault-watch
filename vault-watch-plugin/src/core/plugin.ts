@@ -121,6 +121,9 @@ export default class VaultWatchPlugin extends Plugin {
         () => this.settings.inboxTasks,
         () => this.saveSettings()
       );
+      view.setChatHandler((body, threadRootId, docRefs, mentionedMembers) =>
+        this.sendChatMessage(body, threadRootId, docRefs, mentionedMembers)
+      );
       return view;
     });
 
@@ -394,6 +397,67 @@ export default class VaultWatchPlugin extends Plugin {
     this.registerEvent(this.app.vault.on('modify', async (file) => {
       if (file instanceof TFile) await handleMemberChange(file);
     }));
+  }
+
+  private async sendChatMessage(
+    body: string,
+    threadRootId?: string,
+    docRefs: string[] = [],
+    mentionedMembers: string[] = []
+  ): Promise<void> {
+    if (!this.settings.setupComplete) {
+      new Notice('Vault Watch: Run setup first in settings');
+      return;
+    }
+    const trimmed = body.trim();
+    if (!trimmed) return;
+
+    const members = this.memberRegistry.getMembers();
+    const recipients = members
+      .filter(m => m.id !== this.settings.memberId)
+      .map(m => m.id);
+
+    const id = ulid();
+    const rootId = threadRootId || id;
+    const validMentions = mentionedMembers.filter(
+      mId => mId !== this.settings.memberId && members.some(m => m.id === mId)
+    );
+    const priority: Priority = validMentions.length > 0 ? 'high' : 'normal';
+
+    const event: NotificationEvent = {
+      id,
+      v: 1,
+      type: 'chat_message',
+      ts: Date.now(),
+      sender: { id: this.settings.memberId, name: this.settings.displayName },
+      vault: this.settings.vaultName,
+      filePath: '',
+      fileTitle: '(chat)',
+      change: {
+        changeType: 'chat',
+        summary: trimmed.slice(0, 140),
+        affectedHeadings: [],
+        charDelta: 0,
+        coalescedCount: 1,
+      },
+      recipients,
+      mentionedMembers: validMentions,
+      priority,
+      body: trimmed,
+      threadRootId: rootId,
+      docRefs,
+    };
+
+    // Self-copy first so the sender sees their message immediately, even if dispatch fails
+    await this.inboxStore.addSelfChat(event);
+
+    if (recipients.length > 0) {
+      try {
+        await this.dispatcher.dispatchToVault(event);
+      } catch (err) {
+        notifyError('Chat send failed', err);
+      }
+    }
   }
 
   private async sendReaction(itemId: string, emoji: string): Promise<void> {

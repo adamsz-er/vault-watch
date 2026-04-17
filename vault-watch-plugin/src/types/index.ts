@@ -8,7 +8,8 @@ export type EventType =
   | 'mention'
   | 'task_assigned'
   | 'share'
-  | 'reaction';
+  | 'reaction'
+  | 'chat_message';
 
 export type Priority = 'low' | 'normal' | 'high';
 
@@ -55,6 +56,10 @@ export interface NotificationEvent {
   mentionedMembers: string[];
   priority: Priority;
   tags?: string[];
+  // Chat message fields (only present when type === 'chat_message')
+  body?: string;
+  threadRootId?: string;     // equals event.id for root messages; parent id for replies
+  docRefs?: string[];        // vault paths referenced via '#' in the body
 }
 
 // ─── Encryption Envelope ───
@@ -108,7 +113,7 @@ export interface InboxItem {
   reactions?: { emoji: string; from: string; ts: number }[];
 }
 
-export type InboxTab = 'inbox' | 'activity';
+export type InboxTab = 'inbox' | 'activity' | 'chat';
 export type ActivitySubFilter = 'all' | 'to-me' | 'additions' | 'edits' | 'deletions';
 export type InboxFilter = InboxTab;
 

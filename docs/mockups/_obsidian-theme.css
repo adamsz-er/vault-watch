@@ -1,0 +1,39 @@
+/* Minimal Obsidian-default-dark theme variables for the mockup pages.
+   Values approximated from Obsidian 1.5 default dark theme. */
+:root {
+  --background-primary: #1e1e1e;
+  --background-primary-alt: #1a1a1a;
+  --background-secondary: #161616;
+  --background-secondary-alt: #111111;
+  --background-modifier-border: #2a2a2a;
+  --background-modifier-hover: rgba(255, 255, 255, 0.04);
+  --text-normal: #dcddde;
+  --text-muted: #888;
+  --text-faint: #666;
+  --text-accent: #a37bff;
+  --text-on-accent: #ffffff;
+  --interactive-accent: #7c3aed;
+  --interactive-accent-hover: #8c4df0;
+  --font-interface: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  --font-monospace: 'SF Mono', 'Menlo', 'Consolas', monospace;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Each mockup is wrapped in .vw-mock-frame to match an Obsidian sidebar pane */
+.vw-mock-frame {
+  width: 360px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  overflow: hidden;
+}

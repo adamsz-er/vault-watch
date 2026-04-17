@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vault Watch — tasks lanes mockup</title>
+<link rel="stylesheet" href="_obsidian-theme.css">
+<link rel="stylesheet" href="../../vault-watch-plugin/styles.css">
+<style>
+  body { padding: 24px; background: #0d0d0d; }
+  .vw-mock-frame { width: 820px; }
+  /* Compact icon placeholders */
+  .ico { display: inline-block; width: 14px; height: 14px; vertical-align: -3px; }
+</style>
+</head>
+<body>
+<div class="vw-mock-frame">
+  <div class="vw-inbox" style="height:auto">
+    <div class="vw-header">
+      <div class="vw-title-row">
+        <span class="vw-title">Tasks</span>
+        <span class="vw-badge">7</span>
+        <span class="vw-spacer"></span>
+      </div>
+      <div class="vw-tabs">
+        <button class="vw-tab"><span class="vw-tab-label">Inbox</span><span class="vw-tab-badge">3</span></button>
+        <button class="vw-tab"><span class="vw-tab-label">Activity</span><span class="vw-tab-badge">12</span></button>
+        <button class="vw-tab is-active"><span class="vw-tab-label">Tasks</span><span class="vw-tab-badge">7</span></button>
+      </div>
+
+      <div class="vw-task-subbar">
+        <div class="vw-task-scope">
+          <button class="vw-task-subtle-btn">Mine</button>
+          <button class="vw-task-subtle-btn">Everyone</button>
+        </div>
+        <div class="vw-task-scope">
+          <button class="vw-task-subtle-btn">Show Done</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="vw-task-board">
+
+      <!-- Lane: For Review -->
+      <div class="vw-task-lane">
+        <div class="vw-task-lane-head">
+          <span class="vw-task-lane-title">For Review</span>
+          <span class="vw-task-lane-count">3</span>
+        </div>
+        <div class="vw-task-lane-body">
+
+          <div class="vw-task-card vw-task-pri-high has-activity">
+            <div class="vw-task-card-top">
+              <span class="vw-task-card-icon">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </span>
+              <span class="vw-task-card-title">Q2 Roadmap — final review</span>
+            </div>
+            <div class="vw-task-card-meta">
+              <span class="vw-task-assignee is-me">Me</span>
+              <span class="vw-task-pri-pill vw-task-pri-high">high</span>
+              <span class="vw-task-tag">#urgent</span>
+              <span class="vw-time">2m</span>
+            </div>
+          </div>
+
+          <div class="vw-task-card vw-task-pri-normal">
+            <div class="vw-task-card-top">
+              <span class="vw-task-card-icon">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </span>
+              <span class="vw-task-card-title">Customer interview — Acme call notes</span>
+            </div>
+            <div class="vw-task-card-meta">
+              <span class="vw-task-assignee">Bob</span>
+              <span class="vw-time">1h</span>
+            </div>
+          </div>
+
+          <div class="vw-task-card">
+            <div class="vw-task-card-top">
+              <span class="vw-task-card-icon">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+              </span>
+              <span class="vw-task-card-title">Launch sequence canvas</span>
+            </div>
+            <div class="vw-task-card-meta">
+              <span class="vw-task-assignee">Alice</span>
+              <span class="vw-time">3h</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lane: In Progress -->
+      <div class="vw-task-lane">
+        <div class="vw-task-lane-head">
+          <span class="vw-task-lane-title">In Progress</span>
+          <span class="vw-task-lane-count">2</span>
+        </div>
+        <div class="vw-task-lane-body">
+
+          <div class="vw-task-card vw-task-pri-normal">
+            <div class="vw-task-card-top">
+              <span class="vw-task-card-icon">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </span>
+              <span class="vw-task-card-title">Pricing v3 — annual discount calc</span>
+            </div>
+            <div class="vw-task-card-meta">
+              <span class="vw-task-assignee is-me">Me</span>
+              <span class="vw-task-tag">#priority</span>
+              <span class="vw-time">5h</span>
+            </div>
+          </div>
+
+          <div class="vw-task-card">
+            <div class="vw-task-card-top">
+              <span class="vw-task-card-icon">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </span>
+              <span class="vw-task-card-title">Onboarding plan — first 7 days</span>
+            </div>
+            <div class="vw-task-card-meta">
+              <span class="vw-task-assignee">Bob</span>
+              <span class="vw-time">yesterday</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Lane: Blocked -->
+      <div class="vw-task-lane">
+        <div class="vw-task-lane-head">
+          <span class="vw-task-lane-title">Blocked</span>
+          <span class="vw-task-lane-count">1</span>
+        </div>
+        <div class="vw-task-lane-body">
+          <div class="vw-task-card vw-task-pri-low">
+            <div class="vw-task-card-top">
+              <span class="vw-task-card-icon">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </span>
+              <span class="vw-task-card-title">Brand refresh — waiting on legal</span>
+            </div>
+            <div class="vw-task-card-meta">
+              <span class="vw-task-assignee">Alice</span>
+              <span class="vw-time">3d</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

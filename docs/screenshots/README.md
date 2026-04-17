@@ -1,24 +1,44 @@
 # Vault Watch — screenshots
 
-Drop PNGs here with the exact filenames below; the README references each one as an HTML comment so it stays clean while the file is missing, and renders the moment you uncomment.
+The PNGs in this directory are **component mockups**, not captures of a running Obsidian vault. They're rendered from static HTML pages in `docs/mockups/` that import the actual plugin `styles.css`, so the visual output is pixel-identical to the live UI — just with synthetic dummy content (fake people Alice & Bob, fake files like "Q2 Roadmap.md") so we can publish them without leaking anyone's real vault data.
 
-| Filename | Where it appears in the README | What to capture |
-|---|---|---|
-| `hero.png` | Top of README, under the tagline | A wide Obsidian window with the inbox sidebar open and a card or two visible. Sets the vibe — make it look used, not empty. |
-| `inbox-sidebar.png` | "Inbox sidebar — your activity hub" | Right-side panel only; show 3-5 cards with mixed types (a mention, a normal edit, maybe a grouped card), person filter chips visible. |
-| `tasks-view.png` | "Folder-backed Tasks" | The Tasks tab in lanes view with at least 2 lanes populated (FOR REVIEW + IN PROGRESS works). |
-| `toast.png` | "Notifications that respect attention" | A single Obsidian toast — ideally a high-priority one with the mention badge so it stands out. Crop tight. |
-| `slack-message.png` | "Slack & Chrome (optional)" | The Block Kit message in Slack with the Open in Obsidian button. Crop to just the message. |
-| `chrome-popup.png` | "Slack & Chrome (optional)" | The Chrome extension popup over a Slack tab — show 2-3 cards. |
+## Why mockups instead of real screenshots
 
-## Tips
+- **No privacy leakage.** Real captures would expose actual file names, member names, and note contents.
+- **Perfect composition.** We can show exactly the cards / lanes / event types we want to demo, including grouped cards, mentions, reactions, and high-priority tags, without waiting for the right activity to happen organically.
+- **Reproducible.** Anyone can re-render any screenshot with the same command (see below).
 
-- **Resolution:** 2× / Retina is fine; GitHub will scale them.
-- **Width:** keep under ~1400px wide so they don't dominate the README on a laptop.
-- **Theme:** use whatever Obsidian theme you actually use day-to-day; authenticity beats polish.
-- **Privacy:** scrub real file names / paths / member names if you don't want them public. The screenshots above are intentionally framed to be safe.
-- **Format:** PNG preferred. WebP also fine and smaller; if you use it, update the `.png` references in `README.md` to `.webp`.
+The components themselves — every card, dot color, chip, lane, footer button — are styled by the real `vault-watch-plugin/styles.css`, so the screenshots stay in sync with the actual UI as styles evolve.
 
-## Enabling each one
+## Re-rendering
 
-When you drop a file in, remove the `<!-- ... -->` HTML comment around its `![]()` line in `README.md`. That's the only edit needed.
+Source HTML lives in [`docs/mockups/`](../mockups/). To regenerate:
+
+```bash
+# 1. Serve the repo locally so the relative ../../vault-watch-plugin/styles.css link resolves
+python3 -m http.server 8765 --bind 127.0.0.1 &
+
+# 2. Re-render any one mockup with headless Chrome
+CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+"$CHROME" --headless --disable-gpu --hide-scrollbars --window-size=420,640 \
+  --screenshot=docs/screenshots/inbox-sidebar.png \
+  http://127.0.0.1:8765/docs/mockups/inbox-sidebar.html
+```
+
+Window sizes used for each:
+
+| Filename | Window size |
+|---|---|
+| `inbox-sidebar.png` | 420 × 640 |
+| `tasks-view.png` | 900 × 500 |
+| `chrome-popup.png` | 420 × 640 |
+| `slack-message.png` | 820 × 260 |
+| `toast.png` | 720 × 260 |
+| `hero.png` | 1400 × 520 |
+
+## Authoring guidelines
+
+- Keep dummy content **generic and presentable**. Use Alice/Bob, never real names. File names should look like real product work but be made up.
+- Match the **real DOM structure** in `vault-watch-plugin/src/inbox/inbox-view.ts` — class names like `.vw-card`, `.vw-dot`, `.vw-task-lane`, etc. The mockup pages link to the real `styles.css`, so anything class-based renders identically.
+- For new mockups: one HTML file per screenshot, link both `_obsidian-theme.css` (Obsidian variable defaults) and the real `styles.css`.
+- When a real Obsidian capture would be more honest (e.g. a workflow diagram, a settings panel), prefer that — these mockups are for the polished marketing-style README only.

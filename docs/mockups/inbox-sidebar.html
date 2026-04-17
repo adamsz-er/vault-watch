@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vault Watch — inbox sidebar mockup</title>
+<link rel="stylesheet" href="_obsidian-theme.css">
+<link rel="stylesheet" href="../../vault-watch-plugin/styles.css">
+<style>
+  /* Frame the mockup with a little breathing room so screenshot has padding */
+  body { padding: 24px; background: #0d0d0d; }
+</style>
+</head>
+<body>
+<div class="vw-mock-frame">
+  <div class="vw-inbox" style="height:auto">
+    <!-- Header -->
+    <div class="vw-header">
+      <div class="vw-title-row">
+        <span class="vw-title">Vault Watch</span>
+        <span class="vw-badge">3</span>
+        <span class="vw-spacer"></span>
+      </div>
+      <input class="vw-search" placeholder="Search…" value="">
+      <div class="vw-tabs">
+        <button class="vw-tab is-active">
+          <span class="vw-tab-label">Inbox</span>
+          <span class="vw-tab-badge">3</span>
+        </button>
+        <button class="vw-tab">
+          <span class="vw-tab-label">Activity</span>
+          <span class="vw-tab-badge">12</span>
+        </button>
+      </div>
+      <!-- Person filter chips -->
+      <div class="vw-chip-row">
+        <button class="vw-chip is-active"><span class="vw-chip-name">All</span><span class="vw-chip-count">7</span></button>
+        <button class="vw-chip"><span class="vw-chip-avatar">AC</span><span class="vw-chip-name">Alice</span><span class="vw-chip-count">4</span></button>
+        <button class="vw-chip"><span class="vw-chip-avatar">BR</span><span class="vw-chip-name">Bob</span><span class="vw-chip-count">3</span></button>
+      </div>
+    </div>
+
+    <!-- Cards -->
+    <div class="vw-cards">
+
+      <!-- Mention card (unread, purple dot) -->
+      <div class="vw-card vw-type-mention is-unread">
+        <div class="vw-card-lead">
+          <div class="vw-dot"></div>
+          <span class="vw-avatar">AC</span>
+        </div>
+        <div class="vw-card-body">
+          <div class="vw-card-top">
+            <span class="vw-phrase">
+              <span class="vw-sender">Alice</span>
+              <span class="vw-verb">mentioned you in</span>
+              <span class="vw-file">Q2 Roadmap.md</span>
+            </span>
+            <span class="vw-time">2m</span>
+          </div>
+          <div class="vw-mention-row"><span class="vw-mention-tag">@you</span></div>
+          <div class="vw-summary">"… need your input on the launch sequence before Friday — see the new section under Risks."</div>
+        </div>
+        <button class="vw-done" aria-label="Done">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Grouped card (cross-sender, multiple changes) -->
+      <div class="vw-card vw-card-grouped vw-type-edit is-unread">
+        <div class="vw-card-lead">
+          <div class="vw-dot"></div>
+          <div class="vw-avatar-stack">
+            <span class="vw-avatar">AC</span>
+            <span class="vw-avatar">BR</span>
+          </div>
+        </div>
+        <div class="vw-card-body">
+          <div class="vw-card-top">
+            <span class="vw-phrase">
+              <span class="vw-sender">Alice &amp; Bob</span>
+              <span class="vw-verb">·</span>
+              <span class="vw-file">5 changes to Onboarding Plan.md</span>
+            </span>
+            <span class="vw-time">14m</span>
+          </div>
+          <div class="vw-summary">Added 3 sections (Pricing, Trial, Activation), expanded Risks heading, fixed two CTAs</div>
+        </div>
+        <button class="vw-done" aria-label="Done">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Share card (amber dot) -->
+      <div class="vw-card vw-type-share is-unread">
+        <div class="vw-card-lead">
+          <div class="vw-dot"></div>
+          <span class="vw-avatar">BR</span>
+        </div>
+        <div class="vw-card-body">
+          <div class="vw-card-top">
+            <span class="vw-phrase">
+              <span class="vw-sender">Bob</span>
+              <span class="vw-verb">shared</span>
+              <span class="vw-file">Customer Interview — Acme.md</span>
+            </span>
+            <span class="vw-time">1h</span>
+          </div>
+          <div class="vw-summary">Notes from yesterday's call. Worth skimming the "asks" section before our standup.</div>
+        </div>
+        <button class="vw-done" aria-label="Done">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Read edit card with reactions -->
+      <div class="vw-card vw-type-edit">
+        <div class="vw-card-lead">
+          <div class="vw-dot"></div>
+          <span class="vw-avatar">AC</span>
+        </div>
+        <div class="vw-card-body">
+          <div class="vw-card-top">
+            <span class="vw-phrase">
+              <span class="vw-sender">Alice</span>
+              <span class="vw-verb">edited</span>
+              <span class="vw-file">Pricing v3.md</span>
+            </span>
+            <span class="vw-time">3h</span>
+          </div>
+          <div class="vw-summary">Bumped Pro tier to $29/mo, added annual discount row</div>
+          <div class="vw-reactions">
+            <span class="vw-reaction-chip"><span>👍</span><span class="vw-reaction-count"> 2</span></span>
+            <span class="vw-reaction-chip"><span>👀</span></span>
+          </div>
+        </div>
+        <button class="vw-done" aria-label="Done">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Created card (green dot) -->
+      <div class="vw-card vw-type-created">
+        <div class="vw-card-lead">
+          <div class="vw-dot"></div>
+          <span class="vw-avatar">BR</span>
+        </div>
+        <div class="vw-card-body">
+          <div class="vw-card-top">
+            <span class="vw-phrase">
+              <span class="vw-sender">Bob</span>
+              <span class="vw-verb">created</span>
+              <span class="vw-file">Weekly Sync — 2026-04-17.md</span>
+            </span>
+            <span class="vw-time">5h</span>
+          </div>
+        </div>
+        <button class="vw-done" aria-label="Done">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="vw-footer">
+      <span class="vw-version">v0.7.0</span>
+      <span class="vw-spacer"></span>
+      <button class="vw-footer-btn">Mark all read</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

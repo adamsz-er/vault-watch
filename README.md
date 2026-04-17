@@ -5,8 +5,7 @@
 
 **Notification and inbox system for shared Obsidian vaults.** Get alerted to meaningful vault changes through Obsidian, Slack, and Chrome — with zero infrastructure and end-to-end encryption.
 
-<!-- Hero screenshot — drop docs/screenshots/hero.png to enable -->
-<!-- ![Vault Watch sidebar with cards in a Mac Obsidian window](docs/screenshots/hero.png) -->
+![Vault Watch sidebar inside an Obsidian window](docs/screenshots/hero.png)
 
 > See [ARCHITECTURE.md](./ARCHITECTURE.md) for the design and threat model · [CONTRIBUTING.md](./CONTRIBUTING.md) to hack on it · [CHANGELOG.md](./CHANGELOG.md) for what's new.
 
@@ -30,7 +29,7 @@ Edit → Debounce → Coalesce → Diff → Encrypt ──► outbox/  ─sync�
 
 ### Inbox sidebar — your activity hub
 
-<!-- ![Inbox sidebar with cards, person chips, and unread dots](docs/screenshots/inbox-sidebar.png) -->
+![Inbox sidebar with cards, person chips, and unread dots](docs/screenshots/inbox-sidebar.png)
 
 A two-tab sidebar in Obsidian (`Ctrl+Shift+N`):
 
@@ -41,13 +40,13 @@ Cards are click-to-open (no Open button noise), hover reveals Reply / React / ov
 
 ### Folder-backed Tasks
 
-<!-- ![Tasks tab showing kanban lanes for FOR REVIEW / IN PROGRESS / DONE](docs/screenshots/tasks-view.png) -->
+![Tasks tab showing kanban lanes for FOR REVIEW / IN PROGRESS / BLOCKED](docs/screenshots/tasks-view.png)
 
 Adapts to whatever inbox folder structure you already use, e.g. `0 - INBOX/Alice/1 - FOR REVIEW/`. **Folders are the state machine** — one click advances a task to the next lane via `app.vault.rename` (CRDT-safe, no metadata to keep in sync). Multi-root supported, hides Done by default, treats `.canvas` files as tasks, surfaces "recently edited" activity dots pulled from the notification inbox.
 
 ### Notifications that respect attention
 
-<!-- ![Obsidian toast notification with mention badge](docs/screenshots/toast.png) -->
+![Obsidian toast notification with mention badge](docs/screenshots/toast.png)
 
 - **Toasts** appear in Obsidian on every new event (8s for high-priority, 5s otherwise).
 - **Two-tone audio ping** for high-priority, configurable volume.
@@ -86,9 +85,9 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full threat model.
 
 ### Slack & Chrome (optional)
 
-<!-- ![Slack message with Vault Watch Block Kit and Open in Obsidian button](docs/screenshots/slack-message.png) -->
+![Slack message with Vault Watch Block Kit and Open in Obsidian button](docs/screenshots/slack-message.png)
 
-<!-- ![Chrome extension popup showing inbox cards](docs/screenshots/chrome-popup.png) -->
+![Chrome extension popup showing inbox cards](docs/screenshots/chrome-popup.png)
 
 - **Slack** — Block Kit message with the change summary + an "Open in Obsidian" deep link. Encrypted payload sits in a context block so the Chrome extension can decrypt it.
 - **Chrome extension** (MV3) — runs on `app.slack.com`, scrapes payloads from Slack DOM via `MutationObserver`, decrypts locally, shows desktop notifications + a popup inbox.

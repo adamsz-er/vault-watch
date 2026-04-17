@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vault Watch — hero composite mockup</title>
+<link rel="stylesheet" href="_obsidian-theme.css">
+<link rel="stylesheet" href="../../vault-watch-plugin/styles.css">
+<style>
+  body {
+    padding: 0;
+    background: var(--background-primary);
+    height: 100vh;
+    overflow: hidden;
+  }
+  /* Mock Obsidian window: ribbon | editor | sidebar */
+  .obs-window {
+    display: grid;
+    grid-template-columns: 44px 1fr 380px;
+    height: 100vh;
+    background: var(--background-primary);
+  }
+  .ribbon {
+    background: var(--background-secondary-alt);
+    border-right: 1px solid var(--background-modifier-border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0;
+    gap: 10px;
+  }
+  .ribbon-icon {
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted);
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+  }
+  .ribbon-icon:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+  .ribbon-icon.active { color: var(--text-accent); }
+  .ribbon-badge {
+    position: absolute;
+    top: -2px; right: -4px;
+    background: var(--interactive-accent);
+    color: white;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 0 4px;
+    line-height: 12px;
+    min-width: 12px;
+    text-align: center;
+  }
+  .editor {
+    background: var(--background-primary);
+    padding: 60px 80px;
+    overflow: hidden;
+    color: var(--text-normal);
+    font-family: 'Inter', -apple-system, sans-serif;
+  }
+  .editor h1 { font-size: 28px; margin-bottom: 12px; color: var(--text-normal); }
+  .editor h2 { font-size: 18px; margin-top: 24px; margin-bottom: 8px; color: var(--text-normal); }
+  .editor p { line-height: 1.6; color: var(--text-normal); margin-bottom: 8px; font-size: 14px; }
+  .editor li { line-height: 1.6; margin-left: 20px; color: var(--text-normal); font-size: 14px; }
+  .editor .mention { color: var(--text-accent); font-weight: 600; }
+  .editor .tag { color: #f59e0b; font-weight: 600; }
+
+  .sidebar {
+    border-left: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    overflow: hidden;
+  }
+  .vw-mock-frame { border: none; border-radius: 0; width: 100%; }
+</style>
+</head>
+<body>
+<div class="obs-window">
+
+  <!-- Ribbon -->
+  <div class="ribbon">
+    <div class="ribbon-icon" title="Files">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    </div>
+    <div class="ribbon-icon" title="Search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <div class="ribbon-icon active" title="Vault Watch Inbox">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      <span class="ribbon-badge">3</span>
+    </div>
+  </div>
+
+  <!-- Editor -->
+  <div class="editor">
+    <h1>Q2 Roadmap</h1>
+    <p>Working draft for the Q2 launch sequence. Owner: Alice. Reviewers: Bob, <span class="mention">@adamsz-er</span>.</p>
+    <h2>Goals</h2>
+    <ul>
+      <li>Ship the new pricing tiers by end of April</li>
+      <li>Onboard 5 design partners on the v3 plan</li>
+      <li>Cut activation time from 11 days to under 7</li>
+    </ul>
+    <h2>Risks <span class="tag">#urgent</span></h2>
+    <p><span class="mention">@adamsz-er</span> need your input on the launch sequence before Friday — the dependency on the billing migration looks tight, and we don't have a fallback if the pricing page A/B fails QA on Wednesday.</p>
+    <p>Specifically: do we hold the launch a week, or run the new tier with the old checkout flow as an interim?</p>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="vw-mock-frame">
+      <div class="vw-inbox" style="height:100vh">
+        <div class="vw-header">
+          <div class="vw-title-row">
+            <span class="vw-title">Vault Watch</span>
+            <span class="vw-badge">3</span>
+          </div>
+          <input class="vw-search" placeholder="Search…">
+          <div class="vw-tabs">
+            <button class="vw-tab is-active"><span class="vw-tab-label">Inbox</span><span class="vw-tab-badge">3</span></button>
+            <button class="vw-tab"><span class="vw-tab-label">Activity</span><span class="vw-tab-badge">12</span></button>
+          </div>
+          <div class="vw-chip-row">
+            <button class="vw-chip is-active"><span class="vw-chip-name">All</span><span class="vw-chip-count">7</span></button>
+            <button class="vw-chip"><span class="vw-chip-avatar">AC</span><span class="vw-chip-name">Alice</span><span class="vw-chip-count">4</span></button>
+            <button class="vw-chip"><span class="vw-chip-avatar">BR</span><span class="vw-chip-name">Bob</span><span class="vw-chip-count">3</span></button>
+          </div>
+        </div>
+
+        <div class="vw-cards">
+          <div class="vw-card vw-type-mention is-unread">
+            <div class="vw-card-lead"><div class="vw-dot"></div><span class="vw-avatar">AC</span></div>
+            <div class="vw-card-body">
+              <div class="vw-card-top">
+                <span class="vw-phrase"><span class="vw-sender">Alice</span> <span class="vw-verb">mentioned you in</span> <span class="vw-file">Q2 Roadmap.md</span></span>
+                <span class="vw-time">2m</span>
+              </div>
+              <div class="vw-mention-row"><span class="vw-mention-tag">@you</span></div>
+              <div class="vw-summary">"… need your input on the launch sequence before Friday."</div>
+            </div>
+          </div>
+
+          <div class="vw-card vw-card-grouped vw-type-edit is-unread">
+            <div class="vw-card-lead"><div class="vw-dot"></div>
+              <div class="vw-avatar-stack"><span class="vw-avatar">AC</span><span class="vw-avatar">BR</span></div>
+            </div>
+            <div class="vw-card-body">
+              <div class="vw-card-top">
+                <span class="vw-phrase"><span class="vw-sender">Alice &amp; Bob</span> · <span class="vw-file">5 changes to Onboarding Plan.md</span></span>
+                <span class="vw-time">14m</span>
+              </div>
+              <div class="vw-summary">Added 3 sections, expanded Risks heading, fixed two CTAs</div>
+            </div>
+          </div>
+
+          <div class="vw-card vw-type-share is-unread">
+            <div class="vw-card-lead"><div class="vw-dot"></div><span class="vw-avatar">BR</span></div>
+            <div class="vw-card-body">
+              <div class="vw-card-top">
+                <span class="vw-phrase"><span class="vw-sender">Bob</span> <span class="vw-verb">shared</span> <span class="vw-file">Customer Interview — Acme.md</span></span>
+                <span class="vw-time">1h</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="vw-card vw-type-edit">
+            <div class="vw-card-lead"><div class="vw-dot"></div><span class="vw-avatar">AC</span></div>
+            <div class="vw-card-body">
+              <div class="vw-card-top">
+                <span class="vw-phrase"><span class="vw-sender">Alice</span> <span class="vw-verb">edited</span> <span class="vw-file">Pricing v3.md</span></span>
+                <span class="vw-time">3h</span>
+              </div>
+              <div class="vw-reactions">
+                <span class="vw-reaction-chip"><span>👍</span><span class="vw-reaction-count"> 2</span></span>
+                <span class="vw-reaction-chip"><span>👀</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="vw-footer">
+          <span class="vw-version">v0.7.0</span>
+          <span class="vw-spacer"></span>
+          <button class="vw-footer-btn">Mark all read</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

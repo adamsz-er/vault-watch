@@ -61,6 +61,7 @@ export class InboxStore {
   getItems(_filter: InboxFilter = 'activity', activitySub: ActivitySubFilter = 'all'): InboxItem[] {
     const now = Date.now();
     const visible = this.items.filter(i => {
+      if (i.event.type === 'chat_message') return false;
       if (i.status === 'archived') return false;
       if (i.snoozedUntil && i.snoozedUntil > now) return false;
       if (this.isHiddenByRouting(i.event)) return false;
@@ -74,6 +75,7 @@ export class InboxStore {
     const now = Date.now();
     let count = 0;
     for (const i of this.items) {
+      if (i.event.type === 'chat_message') continue;
       if (i.status !== 'unread') continue;
       if (i.snoozedUntil && i.snoozedUntil > now) continue;
       if (this.isHiddenByRouting(i.event)) continue;
@@ -84,6 +86,35 @@ export class InboxStore {
 
   getUnreadCount(): number {
     return this.getActivityUnreadCount();
+  }
+
+  /** Chat messages sorted ascending by event timestamp (oldest first). */
+  getChatMessages(): InboxItem[] {
+    return this.items
+      .filter(i => i.event.type === 'chat_message' && i.status !== 'archived')
+      .sort((a, b) => a.event.ts - b.event.ts);
+  }
+
+  getChatUnreadCount(): number {
+    let count = 0;
+    for (const i of this.items) {
+      if (i.event.type !== 'chat_message') continue;
+      if (i.status === 'unread') count++;
+    }
+    return count;
+  }
+
+  async markAllChatRead(): Promise<void> {
+    const unread = this.items.filter(
+      i => i.event.type === 'chat_message' && i.status === 'unread'
+    );
+    if (unread.length === 0) return;
+    for (const item of unread) {
+      item.status = 'read';
+      item.readAt = Date.now();
+      await this.persistItem(item);
+    }
+    this.notifyChange();
   }
 
   hasRecentActivityForPath(path: string, withinMs: number): boolean {
@@ -136,6 +167,22 @@ export class InboxStore {
       this.sound?.play(event.priority);
     }
 
+    this.notifyChange();
+  }
+
+  /** Insert a locally-authored chat message without toasts or sounds (sender's own copy). */
+  async addSelfChat(event: NotificationEvent): Promise<void> {
+    if (this.items.some(i => i.id === event.id)) return;
+    const now = Date.now();
+    const item: InboxItem = {
+      id: event.id,
+      event,
+      status: 'read',
+      receivedAt: now,
+      readAt: now,
+    };
+    this.items.push(item);
+    await this.persistItem(item);
     this.notifyChange();
   }
 
@@ -230,6 +277,13 @@ export class InboxStore {
   }
 
   private showToast(event: NotificationEvent): void {
+    if (event.type === 'chat_message') {
+      const preview = (event.body || '').slice(0, 140);
+      const duration = event.priority === 'high' ? 6000 : 3500;
+      new Notice(`💬 ${event.sender.name}: ${preview}`, duration);
+      return;
+    }
+
     const msg = `${event.sender.name} ${getEventVerb(event.type)} "${event.fileTitle}"`;
     const detail = event.change.summary;
     const duration = event.priority === 'high' ? 8000 : 5000;
