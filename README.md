@@ -124,17 +124,17 @@ Updates are automatic on Obsidian restart.
 
 ## Setup (first time)
 
-1. Settings → **Vault Watch**.
-2. Enter your **Member ID** (e.g. `alice`) and **Display Name**.
-3. Leave **Vault Name** blank (auto-detected).
-4. Click **Setup** — generates encryption keys and registers you.
-5. The other team member does the same on their machine.
+When you first enable the plugin, a **welcome modal** pops up — pick a display name, confirm the auto-suggested member ID (live-checked against existing members), click **Join team**. Keys are generated on your device and your member file is written to the vault. That's it.
+
+If you dismiss the modal, the sidebar (`Ctrl+Shift+N`) shows a persistent **"Finish setup"** card and the ribbon icon gets an amber dot — both reopen the modal when clicked.
+
+Power users: everything in the modal is also in **Settings → Vault Watch → Identity**, plus per-event mutes, Slack, Inbox Tasks, etc.
 
 ## Joining an existing team
 
 1. Get an Obsidian Relay invite to the shared vault, accept it, wait for sync.
-2. Install the plugin (BRAT instructions above).
-3. Settings → Vault Watch → pick a unique **Member ID** (check `Z_Meta/vault-watch/members/` for taken names) → click **Setup**.
+2. Install the plugin (BRAT instructions above) and **enable** it.
+3. The setup modal auto-opens — it lists members already on the vault so you can pick a non-taken ID. Click **Join team**.
 
 Existing members get a "new member" toast within ~5s.
 

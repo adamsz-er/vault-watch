@@ -731,6 +731,38 @@
 
 /* ─── Members ─── */
 
+.vw-member-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 4px 6px;
+}
+
+.vw-member-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.vw-member-action-btn:hover {
+  color: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+}
+
+.vw-member-action-btn .svg-icon {
+  width: 12px;
+  height: 12px;
+}
+
 .vw-member-list {
   display: flex;
   flex-direction: column;
@@ -825,6 +857,24 @@
 
 .vault-watch-ribbon.has-unread .svg-icon {
   color: #ef4444;
+}
+
+/* Amber "needs setup" dot on the ribbon — overrides red badge */
+.vault-watch-ribbon.needs-setup::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0 2px var(--background-primary);
+  pointer-events: none;
+}
+
+.vault-watch-ribbon.needs-setup .svg-icon {
+  color: #f59e0b;
 }
 
 /* ─── Status Bar (kept) ─── */
@@ -1603,4 +1653,168 @@
   font-size: 12px;
   color: var(--text-muted);
   text-align: center;
+}
+
+/* ─── Setup Modal ─── */
+
+.vw-setup-modal .vw-setup-title {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.vw-setup-modal .vw-setup-subtitle {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.vw-setup-existing {
+  background: var(--background-secondary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 16px;
+  line-height: 1.45;
+}
+
+.vw-setup-existing-label {
+  color: var(--text-muted);
+}
+
+.vw-setup-existing-list {
+  color: var(--text-normal);
+  font-weight: 500;
+  font-family: var(--font-monospace);
+}
+
+.vw-setup-field {
+  margin-bottom: 14px;
+}
+
+.vw-setup-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-normal);
+  margin-bottom: 3px;
+}
+
+.vw-setup-field-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.vw-setup-field input {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.vw-setup-field input:focus {
+  border-color: var(--interactive-accent);
+  outline: none;
+}
+
+.vw-setup-status {
+  font-size: 11px;
+  margin-top: 4px;
+  min-height: 14px;
+}
+
+.vw-setup-status-ok {
+  color: #22c55e;
+}
+
+.vw-setup-status-ok::before {
+  content: '✓ ';
+  font-weight: 700;
+}
+
+.vw-setup-status-error {
+  color: #ef4444;
+}
+
+.vw-setup-status-muted {
+  color: var(--text-faint);
+}
+
+.vw-setup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.vw-setup-actions button {
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.vw-setup-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vw-setup-later {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.vw-setup-later:hover:not(:disabled) {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* ─── Setup CTA (in-view) ─── */
+
+.vw-setup-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 20px 32px;
+  gap: 8px;
+}
+
+.vw-setup-cta-icon {
+  color: var(--interactive-accent);
+  opacity: 0.9;
+  margin-bottom: 8px;
+}
+
+.vw-setup-cta-icon .svg-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.vw-setup-cta-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-normal);
+}
+
+.vw-setup-cta-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-width: 260px;
+  margin: 0 0 10px;
+}
+
+.vw-setup-cta-btn {
+  padding: 6px 18px;
+  font-size: 13px;
+  font-weight: 600;
 }

@@ -1,6 +1,6 @@
 {
   "name": "vault-watch",
-  "version": "0.7.0",
+  "version": "0.8.1",
   "description": "Notification and inbox system for shared Obsidian vaults synced via Relay (E2E encrypted, zero-server).",
   "main": "main.js",
   "scripts": {

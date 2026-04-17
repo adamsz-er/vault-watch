@@ -51,6 +51,8 @@ export class InboxView extends ItemView {
   private chatHandler: ChatSendHandler | null = null;
   private chatInput: ChatInput | null = null;
   private chatThreadId: string | null = null;   // null = main list; otherwise = root id
+  private getSetupComplete: () => boolean = () => true;
+  private openSetup: () => void = () => {};
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -92,6 +94,11 @@ export class InboxView extends ItemView {
 
   setChatHandler(handler: ChatSendHandler): void {
     this.chatHandler = handler;
+  }
+
+  setSetupSource(getSetupComplete: () => boolean, openSetup: () => void): void {
+    this.getSetupComplete = getSetupComplete;
+    this.openSetup = openSetup;
   }
 
   /**
@@ -168,6 +175,11 @@ export class InboxView extends ItemView {
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
     container.addClass('vw-inbox');
+
+    if (!this.getSetupComplete()) {
+      this.renderSetupCta(container);
+      return;
+    }
 
     this.renderHeader(container);
 
@@ -695,12 +707,20 @@ export class InboxView extends ItemView {
   private renderMembers(container: HTMLElement): void {
     const members = this.getMembers();
 
+    // Always-visible "Re-run setup" action at the top — useful for invitees
+    // who want to re-open the modal without waiting for first-run state.
+    const actionRow = container.createDiv({ cls: 'vw-member-actions' });
+    const setupBtn = actionRow.createEl('button', { cls: 'vw-member-action-btn' });
+    setIcon(setupBtn.createSpan(), 'user-plus');
+    setupBtn.createSpan({ text: 'Open setup' });
+    setupBtn.addEventListener('click', () => this.openSetup());
+
     if (members.length === 0) {
       const empty = container.createDiv({ cls: 'vw-empty' });
       const iconEl = empty.createDiv({ cls: 'vw-empty-icon' });
       setIcon(iconEl, 'users');
       empty.createEl('p', { text: 'No members yet', cls: 'vw-empty-title' });
-      empty.createEl('p', { text: 'Run setup in settings', cls: 'vw-empty-sub' });
+      empty.createEl('p', { text: 'Click "Open setup" above to join.', cls: 'vw-empty-sub' });
       return;
     }
 
@@ -1083,6 +1103,29 @@ export class InboxView extends ItemView {
 
   private hasRecentActivity(path: string): boolean {
     return this.inboxStore.hasRecentActivityForPath(path, DAY);
+  }
+
+  private renderSetupCta(container: HTMLElement): void {
+    const header = container.createDiv({ cls: 'vw-header' });
+    const titleRow = header.createDiv({ cls: 'vw-title-row' });
+    titleRow.createEl('span', { text: 'Vault Watch', cls: 'vw-title' });
+
+    const card = container.createDiv({ cls: 'vw-setup-cta' });
+    const iconEl = card.createDiv({ cls: 'vw-setup-cta-icon' });
+    setIcon(iconEl, 'bell-plus');
+    card.createEl('h3', {
+      text: 'Finish setup to join your team',
+      cls: 'vw-setup-cta-title',
+    });
+    card.createEl('p', {
+      text: 'Pick a member ID to generate your keys and appear to teammates. End-to-end encrypted — no servers, no accounts.',
+      cls: 'vw-setup-cta-sub',
+    });
+    const btn = card.createEl('button', {
+      text: 'Set up now',
+      cls: 'mod-cta vw-setup-cta-btn',
+    });
+    btn.addEventListener('click', () => this.openSetup());
   }
 
   // ─── Chat Tab ───

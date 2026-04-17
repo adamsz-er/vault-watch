@@ -235,6 +235,11 @@ export class InboxStore {
     });
   }
 
+  /** Fire change callbacks. Useful when external state (e.g. setup completion) changes and subscribers need to re-render. */
+  emitChange(): void {
+    this.notifyChange();
+  }
+
   onChange(callback: () => void): void {
     this.onChangeCallbacks.push(callback);
   }

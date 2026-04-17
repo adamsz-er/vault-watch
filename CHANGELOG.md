@@ -3,6 +3,22 @@
 All notable changes to Vault Watch are documented here. The plugin and Chrome
 extension are versioned together by Obsidian plugin manifest version.
 
+## [0.8.1] — 2026-04-17
+
+### Added
+- **First-run setup modal** auto-opens when an invitee enables the plugin on a
+  Relay-shared vault: display name + member ID fields with auto-sync, live
+  "taken / available" check against `members/`, and a list of existing members
+  so you can't collide. Fixes the common silent-install case where new joiners
+  showed up to nobody on the team because they never hit the Setup button.
+- **Persistent CTA** in the inbox sidebar when setup is incomplete: full
+  "Finish setup to join your team" card with a one-click button; replaces the
+  tabs until setup completes.
+- **Amber dot** on the ribbon icon while setup is pending (passive nudge).
+- **"Open Setup" command** in the palette and a button at the top of the
+  Members panel — opens the modal at any time, even after setup is complete
+  (useful for re-running or inviting).
+
 ## [0.8.0] — 2026-04
 
 ### Added

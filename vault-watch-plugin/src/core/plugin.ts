@@ -17,6 +17,7 @@ import { TaskScanner } from '../inbox/task-scanner';
 import { TaskActions } from '../inbox/task-actions';
 import { RecipientPickerModal } from '../notifications/recipient-picker';
 import type { RecipientPickerResult } from '../notifications/recipient-picker';
+import { SetupModal } from '../setup/setup-modal';
 import type { Priority } from '../types';
 import { VaultRelay } from '../relay/vault-relay';
 import { SlackWebhook } from '../relay/slack-webhook';
@@ -124,6 +125,10 @@ export default class VaultWatchPlugin extends Plugin {
       view.setChatHandler((body, threadRootId, docRefs, mentionedMembers) =>
         this.sendChatMessage(body, threadRootId, docRefs, mentionedMembers)
       );
+      view.setSetupSource(
+        () => this.settings.setupComplete,
+        () => this.openSetupModal()
+      );
       return view;
     });
 
@@ -223,6 +228,12 @@ export default class VaultWatchPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: 'open-setup',
+      name: 'Open Setup',
+      callback: () => this.openSetupModal(),
+    });
+
+    this.addCommand({
       id: 'toggle-dnd',
       name: 'Toggle Do Not Disturb',
       callback: () => {
@@ -299,11 +310,34 @@ export default class VaultWatchPlugin extends Plugin {
       await this.memberRegistry.initialize();
       if (this.settings.setupComplete) {
         await this.startWatching();
+      } else {
+        // First-run: surface the setup modal so the user doesn't end up
+        // silently invisible to their team.
+        this.updateRibbonBadge();
+        this.openSetupModal();
       }
       if (this.settings.inboxTasks.enabled) {
         await this.taskScanner.scan();
       }
     });
+  }
+
+  openSetupModal(): void {
+    const defaultName = this.settings.displayName || this.app.vault.getName();
+    new SetupModal(
+      this.app,
+      defaultName,
+      this.settings.memberId,
+      async ({ memberId, displayName }) => {
+        this.settings.memberId = memberId;
+        this.settings.displayName = displayName;
+        await this.saveSettings();
+        await this.runSetup();
+        new Notice(`Welcome, ${displayName}! You're in.`, 4000);
+        this.inboxStore.emitChange();
+        this.updateRibbonBadge();
+      }
+    ).open();
   }
 
   async onunload(): Promise<void> {
@@ -358,11 +392,19 @@ export default class VaultWatchPlugin extends Plugin {
 
   private updateRibbonBadge(): void {
     if (!this.ribbonIconEl) return;
-    const count = this.inboxStore.getUnreadCount();
 
     const existing = this.ribbonIconEl.querySelector('.vault-watch-ribbon-badge');
     if (existing) existing.remove();
 
+    if (!this.settings.setupComplete) {
+      // Amber dot until the user finishes setup — strips count styling entirely.
+      this.ribbonIconEl.addClass('needs-setup');
+      this.ribbonIconEl.removeClass('has-unread');
+      return;
+    }
+    this.ribbonIconEl.removeClass('needs-setup');
+
+    const count = this.inboxStore.getUnreadCount();
     if (count > 0) {
       this.ribbonIconEl.addClass('has-unread');
       this.ribbonIconEl.createEl('span', {
