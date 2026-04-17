@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, setIcon, Menu } from 'obsidian';
+import { ItemView, WorkspaceLeaf, setIcon, Menu, Notice, TFile, TFolder } from 'obsidian';
 import type { InboxItem, InboxFilter, InboxTab, ActivitySubFilter, Member, InboxTask, InboxTaskLane, InboxTasksSettings } from '../types';
 import { INBOX_VIEW_TYPE, REACTION_EMOJIS } from '../types';
 import type { InboxStore } from './inbox-store';
@@ -8,6 +8,8 @@ import type { TaskActions } from './task-actions';
 import { getEventVerb } from '../utils/event-verbs';
 import { INBOX_TIMESTAMP_REFRESH_MS } from '../core/constants';
 import { groupInboxItems } from './event-grouping';
+import { ChatInput, ChatSubmission } from '../chat/chat-input';
+import { groupIntoThreads, ChatThread } from '../chat/chat-grouping';
 import {
   getInitials,
   eventColorClass,
@@ -15,6 +17,13 @@ import {
   formatTimeAgo,
   formatItemSummary,
 } from './inbox-formatting';
+
+type ChatSendHandler = (
+  body: string,
+  threadRootId: string | undefined,
+  docRefs: string[],
+  mentionedMembers: string[]
+) => Promise<void>;
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * 60 * 60 * 1000;
@@ -39,6 +48,9 @@ export class InboxView extends ItemView {
   private taskActions: TaskActions | null = null;
   private getTasksSettings: (() => InboxTasksSettings) | null = null;
   private saveSettings: (() => Promise<void>) | null = null;
+  private chatHandler: ChatSendHandler | null = null;
+  private chatInput: ChatInput | null = null;
+  private chatThreadId: string | null = null;   // null = main list; otherwise = root id
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -78,6 +90,34 @@ export class InboxView extends ItemView {
     this.onReact = handler;
   }
 
+  setChatHandler(handler: ChatSendHandler): void {
+    this.chatHandler = handler;
+  }
+
+  /**
+   * Switch to the Chat tab and pre-insert a doc-ref chip for `filePath`,
+   * ready for the user to type their message.
+   */
+  startChatAbout(filePath: string): void {
+    this.currentFilter = 'chat';
+    this.chatThreadId = null;
+    this.showMembers = false;
+    this.render();
+    // The input mount happens inside renderChatTab, so schedule the insert
+    // after the DOM is attached.
+    requestAnimationFrame(() => {
+      if (!this.chatInput) return;
+      const file = this.app.vault.getAbstractFileByPath(filePath);
+      const label = file instanceof TFile
+        ? file.basename
+        : file instanceof TFolder
+          ? file.name
+          : filePath.split('/').pop()?.replace(/\.md$/, '') || filePath;
+      const kind: 'file' | 'folder' = file instanceof TFolder ? 'folder' : 'file';
+      this.chatInput.insertDocRef(filePath, label, kind);
+    });
+  }
+
   getViewType(): string {
     return INBOX_VIEW_TYPE;
   }
@@ -94,7 +134,11 @@ export class InboxView extends ItemView {
   async onOpen(): Promise<void> {
     this.inboxStore.onChange(this.changeHandler);
     this.render();
-    this.refreshInterval = setInterval(() => this.render(), INBOX_TIMESTAMP_REFRESH_MS);
+    this.refreshInterval = setInterval(() => {
+      // Skip timer-based re-render while composing in chat — would clobber draft text
+      if (this.currentFilter === 'chat') return;
+      this.render();
+    }, INBOX_TIMESTAMP_REFRESH_MS);
   }
 
   async onClose(): Promise<void> {
@@ -103,6 +147,10 @@ export class InboxView extends ItemView {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
       this.refreshInterval = null;
+    }
+    if (this.chatInput) {
+      this.chatInput.destroy();
+      this.chatInput = null;
     }
     document.querySelectorAll('.vw-popover').forEach(el => el.remove());
   }
@@ -126,6 +174,12 @@ export class InboxView extends ItemView {
     if (this.showMembers) {
       this.renderMembers(container);
       this.renderFooter(container, false);
+      return;
+    }
+
+    if (this.currentFilter === 'chat') {
+      this.renderChatTab(container);
+      // Chat has its own footer (no mark-all button — chat auto-reads on view)
       return;
     }
 
@@ -191,10 +245,12 @@ export class InboxView extends ItemView {
 
     const activityBadge = this.inboxStore.getActivityUnreadCount();
     const inboxBadge = this.countMyOpenTasks();
+    const chatBadge = this.inboxStore.getChatUnreadCount();
 
     const tabs: { id: InboxTab; label: string; badge: number }[] = [
       { id: 'inbox', label: 'Inbox', badge: inboxBadge },
       { id: 'activity', label: 'Activity', badge: activityBadge },
+      { id: 'chat', label: 'Chat', badge: chatBadge },
     ];
 
     const tabRow = header.createDiv({ cls: 'vw-tabs' });
@@ -1028,4 +1084,284 @@ export class InboxView extends ItemView {
   private hasRecentActivity(path: string): boolean {
     return this.inboxStore.hasRecentActivityForPath(path, DAY);
   }
+
+  // ─── Chat Tab ───
+
+  private renderChatTab(container: HTMLElement): void {
+    if (!this.chatHandler) {
+      this.renderEmptyChat(container, 'Chat is unavailable until setup completes');
+      return;
+    }
+
+    const messages = this.inboxStore.getChatMessages();
+    const threads = groupIntoThreads(messages);
+
+    const body = container.createDiv({ cls: 'vw-chat-body' });
+
+    if (this.chatThreadId) {
+      this.renderChatThread(body, threads);
+    } else {
+      this.renderChatMainList(body, threads);
+    }
+
+    const inputSlot = container.createDiv({ cls: 'vw-chat-input-slot' });
+    if (!this.chatInput) {
+      this.chatInput = new ChatInput({
+        app: this.app,
+        getMembers: () => this.getMembers(),
+        onSubmit: (submission) => this.handleChatSubmit(submission),
+        placeholder: this.chatThreadId ? 'Reply in thread…' : 'Message — @ mention, # link a note',
+      });
+    } else {
+      this.chatInput.setPlaceholder(
+        this.chatThreadId ? 'Reply in thread…' : 'Message — @ mention, # link a note'
+      );
+    }
+    this.chatInput.mount(inputSlot);
+
+    // Clear unread when viewing
+    void this.inboxStore.markAllChatRead();
+  }
+
+  private renderChatMainList(parent: HTMLElement, threads: ChatThread[]): void {
+    if (threads.length === 0) {
+      this.renderEmptyChat(parent, 'No messages yet — say hi 👋');
+      return;
+    }
+    const list = parent.createDiv({ cls: 'vw-chat-list' });
+    for (const thread of threads) {
+      this.renderChatRoot(list, thread);
+    }
+    // Auto-scroll to bottom after paint
+    requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; });
+  }
+
+  private renderChatThread(parent: HTMLElement, threads: ChatThread[]): void {
+    const thread = threads.find(t => t.root.id === this.chatThreadId);
+    if (!thread) {
+      // Root not found — drop back to main
+      this.chatThreadId = null;
+      this.renderChatMainList(parent, threads);
+      return;
+    }
+
+    const header = parent.createDiv({ cls: 'vw-chat-thread-header' });
+    const back = header.createEl('button', { cls: 'vw-chat-thread-back' });
+    setIcon(back, 'arrow-left');
+    back.createSpan({ text: 'All messages' });
+    back.addEventListener('click', () => {
+      this.chatThreadId = null;
+      this.render();
+    });
+    header.createSpan({
+      text: `Thread · ${thread.replies.length + 1} message${thread.replies.length === 0 ? '' : 's'}`,
+      cls: 'vw-chat-thread-title',
+    });
+
+    const list = parent.createDiv({ cls: 'vw-chat-list vw-chat-thread-list' });
+    this.renderChatMessage(list, thread.root, { isRoot: true, showReplyAction: false });
+    for (const reply of thread.replies) {
+      this.renderChatMessage(list, reply, { isRoot: false, showReplyAction: false });
+    }
+    requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; });
+  }
+
+  private renderChatRoot(parent: HTMLElement, thread: ChatThread): void {
+    this.renderChatMessage(parent, thread.root, {
+      isRoot: true,
+      showReplyAction: true,
+      replyCount: thread.replies.length,
+      lastReplyTs: thread.replies[thread.replies.length - 1]?.event.ts,
+    });
+  }
+
+  private renderChatMessage(
+    parent: HTMLElement,
+    item: InboxItem,
+    opts: { isRoot: boolean; showReplyAction: boolean; replyCount?: number; lastReplyTs?: number }
+  ): void {
+    const isMe = item.event.sender.id === this.myId;
+    const isMention = item.event.mentionedMembers.includes(this.myId);
+    const msg = parent.createDiv({
+      cls: `vw-chat-msg ${isMe ? 'is-me' : ''} ${isMention ? 'is-mention' : ''} ${item.status === 'unread' ? 'is-unread' : ''}`,
+    });
+
+    const lead = msg.createDiv({ cls: 'vw-chat-msg-lead' });
+    lead.createSpan({ text: getInitials(item.event.sender.name), cls: 'vw-avatar' });
+
+    const mainCol = msg.createDiv({ cls: 'vw-chat-msg-main' });
+
+    const top = mainCol.createDiv({ cls: 'vw-chat-msg-top' });
+    top.createSpan({ text: item.event.sender.name, cls: 'vw-chat-msg-sender' });
+    top.createSpan({ text: formatTimeAgo(item.event.ts), cls: 'vw-time' });
+
+    const bodyEl = mainCol.createDiv({ cls: 'vw-chat-msg-body' });
+    this.renderChatBody(bodyEl, item);
+
+    if (opts.showReplyAction) {
+      const actions = mainCol.createDiv({ cls: 'vw-chat-msg-actions' });
+      const replyCount = opts.replyCount ?? 0;
+      if (replyCount > 0) {
+        const pill = actions.createEl('button', { cls: 'vw-chat-thread-pill' });
+        pill.createSpan({
+          text: `${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`,
+          cls: 'vw-chat-thread-pill-count',
+        });
+        if (opts.lastReplyTs) {
+          pill.createSpan({ text: `· last ${formatTimeAgo(opts.lastReplyTs)}`, cls: 'vw-chat-thread-pill-meta' });
+        }
+        pill.addEventListener('click', () => {
+          this.chatThreadId = item.id;
+          this.render();
+        });
+      } else {
+        const reply = actions.createEl('button', { cls: 'vw-chat-reply-btn' });
+        setIcon(reply, 'reply');
+        reply.createSpan({ text: 'Reply in thread' });
+        reply.addEventListener('click', () => {
+          this.chatThreadId = item.id;
+          this.render();
+        });
+      }
+    }
+  }
+
+  private renderChatBody(parent: HTMLElement, item: InboxItem): void {
+    const body = item.event.body || item.event.change.summary || '';
+    const mentionedIds = new Set(item.event.mentionedMembers);
+    const docRefs = new Set(item.event.docRefs || []);
+    const members = this.getMembers();
+
+    // Tokenize: find @id and #path tokens, render as chips; other text as plain spans.
+    // Path tokens can contain '/', '.', spaces, so we greedy-match the longest registered docRef.
+    let i = 0;
+    while (i < body.length) {
+      const ch = body[i];
+      if (ch === '@') {
+        // Match longest member id/displayName at position
+        const matched = matchMemberToken(body, i + 1, members, mentionedIds);
+        if (matched) {
+          const chip = parent.createSpan({
+            text: `@${matched.displayName}`,
+            cls: 'vw-chat-chip vw-chat-chip-mention' + (matched.id === this.myId ? ' is-self' : ''),
+          });
+          chip.setAttr('title', `@${matched.id}`);
+          i += 1 + matched.matchedLength;
+          continue;
+        }
+      }
+      if (ch === '#') {
+        const matched = matchPathToken(body, i + 1, docRefs);
+        if (matched) {
+          const isFolder = matched.endsWith('/') || !matched.includes('.');
+          const chip = parent.createEl('a', {
+            cls: `vw-chat-chip vw-chat-chip-ref is-${isFolder ? 'folder' : 'file'}`,
+            text: `${isFolder ? '📁' : '📄'} ${labelForPath(matched)}`,
+            attr: { href: '#', title: matched },
+          });
+          chip.addEventListener('click', (e) => {
+            e.preventDefault();
+            void this.openDocRef(matched);
+          });
+          i += 1 + matched.length;
+          continue;
+        }
+      }
+      if (ch === '\n') {
+        parent.createEl('br');
+        i++;
+        continue;
+      }
+      // Accumulate plain text until next special char. Include the current char
+      // (which may be a stray @ or # that didn't match a token) so we always advance.
+      let j = i + 1;
+      while (j < body.length && body[j] !== '@' && body[j] !== '#' && body[j] !== '\n') j++;
+      parent.createSpan({ text: body.slice(i, j) });
+      i = j;
+    }
+  }
+
+  private async openDocRef(path: string): Promise<void> {
+    const abstract = this.app.vault.getAbstractFileByPath(path);
+    if (abstract instanceof TFile) {
+      await this.app.workspace.openLinkText(path, '', false);
+      return;
+    }
+    if (abstract instanceof TFolder) {
+      // Reveal folder in the file explorer pane if available
+      const explorer = this.app.workspace.getLeavesOfType('file-explorer')[0];
+      if (explorer) {
+        this.app.workspace.revealLeaf(explorer);
+        const view = explorer.view as unknown as { revealInFolder?: (f: TFolder) => void };
+        view.revealInFolder?.(abstract);
+        return;
+      }
+      new Notice(`Folder: ${path}`);
+      return;
+    }
+    new Notice(`"${path}" not found in vault`);
+  }
+
+  private renderEmptyChat(parent: HTMLElement, message: string): void {
+    const empty = parent.createDiv({ cls: 'vw-empty vw-chat-empty' });
+    const iconEl = empty.createDiv({ cls: 'vw-empty-icon' });
+    setIcon(iconEl, 'message-circle');
+    empty.createEl('p', { text: message, cls: 'vw-empty-title' });
+  }
+
+  private async handleChatSubmit(submission: ChatSubmission): Promise<void> {
+    if (!this.chatHandler) return;
+    await this.chatHandler(
+      submission.body,
+      this.chatThreadId || undefined,
+      submission.docRefs,
+      submission.mentionedMembers
+    );
+  }
+}
+
+// ─── Chat tokenization helpers ───
+
+interface MemberTokenMatch {
+  id: string;
+  displayName: string;
+  matchedLength: number;
+}
+
+function matchMemberToken(
+  text: string,
+  startIndex: number,
+  members: Member[],
+  mentionedIds: Set<string>
+): MemberTokenMatch | null {
+  // Try longest id first; an @-token runs to the first whitespace or special char
+  let end = startIndex;
+  while (end < text.length && !/[\s@#]/.test(text[end])) end++;
+  const candidate = text.slice(startIndex, end);
+  if (!candidate) return null;
+  const member = members.find(
+    m => m.id === candidate || m.displayName === candidate
+  );
+  if (member && mentionedIds.has(member.id)) {
+    return { id: member.id, displayName: member.displayName, matchedLength: candidate.length };
+  }
+  return null;
+}
+
+function matchPathToken(text: string, startIndex: number, docRefs: Set<string>): string | null {
+  // Try longest matching docRef starting at startIndex. Paths can contain spaces and slashes;
+  // we pick the registered docRef that matches at this position with the greatest length.
+  let best: string | null = null;
+  for (const ref of docRefs) {
+    if (text.startsWith(ref, startIndex)) {
+      if (!best || ref.length > best.length) best = ref;
+    }
+  }
+  return best;
+}
+
+function labelForPath(path: string): string {
+  const stripped = path.replace(/\/$/, '');
+  const last = stripped.split('/').pop() || stripped;
+  return last.replace(/\.md$/, '');
 }

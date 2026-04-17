@@ -31,12 +31,24 @@ Edit → Debounce → Coalesce → Diff → Encrypt ──► outbox/  ─sync�
 
 ![Inbox sidebar with cards, person chips, and unread dots](docs/screenshots/inbox-sidebar.png)
 
-A two-tab sidebar in Obsidian (`Ctrl+Shift+N`):
+A three-tab sidebar in Obsidian (`Ctrl+Shift+N`):
 
 - **Inbox** — your folder-backed task queue (what needs your attention).
 - **Activity** — full event feed with sub-filters (All / To me / Additions / Edits / Deletes), per-person filter chips, and search.
+- **Chat** — Slack-style chat with threads, `@mentions`, and `#` deep-links to vault notes (see below).
 
 Cards are click-to-open (no Open button noise), hover reveals Reply / React / overflow menu, and consecutive edits to the same file within an hour stack into one expandable card — even across different senders ("Alice & Bob · 5 changes to plan.md"). Color-coded left dot indicates event type at a glance.
+
+### Chat — quick, in-vault conversation
+
+A mini Slack-style chat as a third tab alongside Inbox and Activity. Built for quick coordination without leaving Obsidian.
+
+- **Single shared channel** with **threaded replies** — click "N replies" on any message to open a focused thread view.
+- **`@mentions`** — type `@` to pick from the member list; mentioned recipients get a high-priority toast.
+- **`#` deep-links** — type `#` to pick any note or folder in the vault; inserts a chip that opens the note (or reveals the folder) on click.
+- **Chat about this** — right-click any note or folder (or use the command palette on an open note) to jump straight to the Chat tab with that `#ref` pre-inserted, ready for you to type.
+- **End-to-end encrypted** — chat rides the same TweetNaCl sealed-box envelope as notifications, so the security model is identical.
+- **Local history** — each member stores their own chat history in `inbox/<id>/`. Chat messages don't pollute Inbox or Activity lists or badges.
 
 ### Folder-backed Tasks
 

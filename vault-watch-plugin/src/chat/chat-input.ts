@@ -18,23 +18,34 @@ interface ChatInputOptions {
 type Trigger = { char: '@' | '#'; startOffset: number; node: Text; query: string };
 
 export class ChatInput {
-  private root: HTMLElement;
-  private editor!: HTMLDivElement;
+  private wrap: HTMLDivElement;
+  private editor: HTMLDivElement;
   private popover: HTMLElement | null = null;
   private activeTrigger: Trigger | null = null;
   private suggestionIndex = 0;
   private suggestionItems: Array<Member | DocRefEntry> = [];
   private docRefsCache: DocRefEntry[] | null = null;
 
-  constructor(mountTo: HTMLElement, private opts: ChatInputOptions) {
-    this.root = mountTo;
+  constructor(private opts: ChatInputOptions) {
+    this.wrap = document.createElement('div');
+    this.wrap.className = 'vw-chat-input-wrap';
+    this.editor = document.createElement('div');
     this.render();
   }
 
-  private render(): void {
-    const wrap = this.root.createDiv({ cls: 'vw-chat-input-wrap' });
+  /** Attach the input DOM to a parent. Safe to call repeatedly — moves the DOM. */
+  mount(parent: HTMLElement): void {
+    parent.appendChild(this.wrap);
+  }
 
-    this.editor = wrap.createEl('div', {
+  getWrap(): HTMLElement {
+    return this.wrap;
+  }
+
+  private render(): void {
+    this.wrap.empty();
+
+    this.editor = this.wrap.createEl('div', {
       cls: 'vw-chat-input',
       attr: {
         contenteditable: 'true',
@@ -51,7 +62,7 @@ export class ChatInput {
       setTimeout(() => this.closePopover(), 150);
     });
 
-    const hint = wrap.createDiv({ cls: 'vw-chat-input-hint' });
+    const hint = this.wrap.createDiv({ cls: 'vw-chat-input-hint' });
     hint.createSpan({ text: 'Enter to send · Shift+Enter for newline' });
   }
 
@@ -66,6 +77,42 @@ export class ChatInput {
   clear(): void {
     this.editor.empty();
     this.closePopover();
+  }
+
+  /**
+   * Insert a doc-ref chip at the current caret (or at the end if the editor isn't focused).
+   * No-op if the same path is already chipped in the editor.
+   */
+  insertDocRef(path: string, label: string, kind: 'file' | 'folder' = 'file'): void {
+    if (this.editor.querySelector(`.vw-chat-chip-ref[data-path="${CSS.escape(path)}"]`)) {
+      this.focus();
+      return;
+    }
+
+    this.focus();
+    const chip = this.createChip('#', { path, label, kind });
+    const space = document.createTextNode('\u00A0');
+
+    const sel = window.getSelection();
+    let range: Range;
+    const existingRange = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+    if (existingRange && this.editor.contains(existingRange.startContainer)) {
+      range = existingRange;
+      range.deleteContents();
+    } else {
+      range = document.createRange();
+      range.selectNodeContents(this.editor);
+      range.collapse(false);
+    }
+
+    range.insertNode(space);
+    range.insertNode(chip);
+
+    const after = document.createRange();
+    after.setStartAfter(space);
+    after.collapse(true);
+    sel?.removeAllRanges();
+    sel?.addRange(after);
   }
 
   destroy(): void {

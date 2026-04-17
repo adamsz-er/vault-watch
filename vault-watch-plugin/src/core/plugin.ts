@@ -191,6 +191,17 @@ export default class VaultWatchPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: 'chat-about-current-file',
+      name: 'Chat about current file in Vault Watch',
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file) return false;
+        if (checking) return true;
+        void this.openChatAbout(file.path);
+      },
+    });
+
+    this.addCommand({
       id: 'force-sync',
       name: 'Force Sync',
       callback: async () => {
@@ -231,6 +242,12 @@ export default class VaultWatchPlugin extends Plugin {
       this.app.workspace.on('file-menu', (menu: Menu, file) => {
         if (file instanceof TFile && file.path.endsWith('.md')) {
           this.addSendSubmenu(menu, file);
+          menu.addItem((item) => {
+            item
+              .setTitle('Chat about this in Vault Watch')
+              .setIcon('message-circle')
+              .onClick(() => this.openChatAbout(file.path));
+          });
         } else if (file instanceof TFolder) {
           menu.addItem((item) => {
             item
@@ -238,7 +255,27 @@ export default class VaultWatchPlugin extends Plugin {
               .setIcon('bell-ring')
               .onClick(() => this.promptSendFolder(file));
           });
+          menu.addItem((item) => {
+            item
+              .setTitle('Chat about this folder in Vault Watch')
+              .setIcon('message-circle')
+              .onClick(() => this.openChatAbout(file.path));
+          });
         }
+      })
+    );
+
+    // Editor menu: "Chat about this" on the active note
+    this.registerEvent(
+      this.app.workspace.on('editor-menu', (menu, _editor, view) => {
+        const file = view.file;
+        if (!file) return;
+        menu.addItem((item) => {
+          item
+            .setTitle('Chat about this in Vault Watch')
+            .setIcon('message-circle')
+            .onClick(() => this.openChatAbout(file.path));
+        });
       })
     );
 
@@ -717,17 +754,26 @@ export default class VaultWatchPlugin extends Plugin {
     }
   }
 
-  private async activateView(): Promise<void> {
+  private async activateView(): Promise<WorkspaceLeaf | null> {
     const existing = this.app.workspace.getLeavesOfType(INBOX_VIEW_TYPE);
     if (existing.length > 0) {
       this.app.workspace.revealLeaf(existing[0]);
-      return;
+      return existing[0];
     }
 
     const leaf = this.app.workspace.getRightLeaf(false);
     if (leaf) {
       await leaf.setViewState({ type: INBOX_VIEW_TYPE, active: true });
       this.app.workspace.revealLeaf(leaf);
+      return leaf;
     }
+    return null;
+  }
+
+  private async openChatAbout(filePath: string): Promise<void> {
+    const leaf = await this.activateView();
+    if (!leaf) return;
+    const view = leaf.view as InboxView;
+    view.startChatAbout(filePath);
   }
 }
