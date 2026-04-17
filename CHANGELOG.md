@@ -3,6 +3,18 @@
 All notable changes to Vault Watch are documented here. The plugin and Chrome
 extension are versioned together by Obsidian plugin manifest version.
 
+## [0.8.0] — 2026-04
+
+### Added
+- **Chat tab**: a third sidebar tab beside Inbox + Activity. Single shared channel
+  with threaded replies, `@mentions` (high-priority toast for the recipient),
+  and `#` deep-links to any vault note or folder. Right-click any note → "Chat
+  about this" pre-inserts the `#ref`. End-to-end encrypted (same TweetNaCl
+  envelope as notifications). Local history persisted under `inbox/<id>/`;
+  chat messages stay out of Inbox / Activity badges.
+- **Recipient picker** for Send to Vault Watch: right-click any note → submenu
+  to either notify a specific member or assign as a task.
+
 ## [0.7.0] — 2026-04
 
 ### Added
